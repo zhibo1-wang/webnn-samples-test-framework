@@ -3,8 +3,8 @@ const path = require("path");
 
 const _ = require("lodash");
 
-const env = require("../env.json");
 const util = require("./utils/util.js");
+const env = util.getEnv();
 const { renderResultsAsHTML, report, scpUpload } = require("./utils/report.js");
 const { program } = require("commander");
 const sessionCreate = require("./cases/session-create.js");
@@ -39,11 +39,12 @@ program
   .name("npm test --")
   .description("WebNN Sample Test")
   .option("-c --config <path>", "Specify the config file path", "config.json")
+  .option("-e --env <name>", "Specify the env name")
   .option("-f, --filters [filter...]", "Specify the specific single sample test")
   .option("-b --browser-dir <path>", "Specify browser 'Application' folder path")
   .option("-d --user-data-dir <path>", "Specify browser 'User Data' folder path");
 
-program.action(async ({ config: configPath, filters, browserDir, userDataDir }) => {
+program.action(async ({ config: configPath, env: envName, filters, browserDir, userDataDir }) => {
   const config = require(path.resolve(process.cwd(), configPath));
   console.log(`Using config file: ${configPath}`);
 
