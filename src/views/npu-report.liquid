@@ -1,0 +1,54 @@
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title></title>
+    <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.5.0/semantic.min.css"
+            integrity="sha512-KXol4x3sVoO+8ZsWPFI/r5KBVB/ssCGB5tsv2nVOKwLg33wTFP3fmnXa47FdSVIshVTgsYk/1734xSk9aFIa4A=="
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"
+    />
+    <style>
+        td {
+            padding: 0;
+            font-size: 18px;
+            cursor: default;
+        }
+
+        td:first-child, th:first-child {
+            text-align: left !important;
+            padding: inherit;
+            font-size: inherit;
+            cursor: inherit;
+        }
+    </style>
+</head>
+
+<body class="ui container" style="padding-top: 20px">
+<table class="ui condensed center aligned table">
+    <thead>
+    <th></th>
+    {% for driver in drivers %}
+        <th>{{ driver | split: '.' | last }}</th>
+    {% endfor %}
+    </thead>
+    <tbody>
+    {% for test in data %}
+        <tr>
+            <td>
+                {{ test[0] }}
+            </td>
+            {% for driverResult in test[1] %}
+                <td title="{{ driverResult[1].error }}">
+                    {% if driverResult[1].error and driverResult[1].error != "" %}
+                        <span style="color: red">✘</span>
+                    {% else %}
+                        <span style="color: green">✔</span>
+                    {% endif %}
+                </td>
+            {% endfor %}
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</body>
