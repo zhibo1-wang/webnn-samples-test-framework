@@ -50,8 +50,6 @@ function getBrowserPath(config) {
     userDataDir = config.browserUserDataPath;
   } else {
     userDataDir = path.join(os.tmpdir(), `webnn-sample-test-${browser}`);
-    fs.rmSync(userDataDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 5 });
-    fs.mkdirSync(userDataDir, { recursive: true });
   }
 
   const browserConfig = {
@@ -658,6 +656,7 @@ module.exports = {
   waitForElementEnabled,
   killBrowserProcess,
   getBrowserProcess,
+  getBrowserPath,
   chromePath,
   clickElementIfEnabled,
   generateSupportedSamplesArray,
