@@ -43,6 +43,8 @@ async function faceRecognitionTest({ config, backend, dataType, model } = {}) {
       const elementsToClick = [pageElement[backend], pageElement[faceRecognition], pageElement[modelName]];
       for (const selector of elementsToClick) {
         await util.clickElementIfEnabled(page, selector);
+        // The js script on the page is ... wierd, so we add some delay here to make it run correctly
+        await util.delay(1000);
       }
 
       // wait for model running results
