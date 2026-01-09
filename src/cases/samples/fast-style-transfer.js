@@ -1,127 +1,85 @@
+const BaseSample = require("./base-sample.js");
 const util = require("../../utils/util.js");
 const pageElement = require("../../page-elements/samples.js");
-const _ = require("lodash");
 const path = require("path");
 
-async function fastStyleTransferTest({ config, backend, dataType, model } = {}) {
-  const source = "samples";
-  const sample = "fast-style-transfer";
-  const results = {};
-  const expectedCanvas = path.join(path.resolve(__dirname), "../../../assets/canvas/fast-style-transfer");
+class FastStyleTransferSample extends BaseSample {
+  constructor(config) {
+    super(config, "samples", "fast-style-transfer");
+    this.expectedCanvas = path.join(path.resolve(__dirname), "../../../assets/canvas/fast-style-transfer");
+  }
 
-  const testExecution = async (backend, dataType, model) => {
-    if (!["cpu", "gpu", "npu"].includes(backend)) {
-      console.warn(`Invalid backend: ${backend}`);
-      return;
-    }
-
-    console.log(`${source} ${sample} ${backend} ${dataType} ${model} testing...`);
-    const screenshotFilename = `${source}_${sample}_${backend}_${dataType}_${model}`;
+  async run(page, backend, dataType, model) {
     let errorMsg = "";
-    let browser;
-    let page;
+    let lastResults = {};
 
-    try {
-      browser = await util.launchBrowser(config);
-      page = (await browser.pages())[0];
-      page.setDefaultTimeout(config["timeout"]);
-      await page.goto(`${config["samplesBasicUrl"]}${config["samplesUrl"][sample]}`, {
-        waitUntil: "networkidle0"
-      });
-      await page.waitForSelector(`::-p-xpath(${pageElement.backendText})`);
+    await page.waitForSelector(`::-p-xpath(${pageElement.backendText})`);
 
-      for (const example of config[source][sample]["examples"]) {
-        const elementsToClick = [pageElement[backend], pageElement[example]];
-        for (const selector of elementsToClick) {
-          await util.clickElementIfEnabled(page, selector);
+    for (const example of this.config[this.source][this.sample].examples) {
+      const elementsToClick = [pageElement[backend], pageElement[example]];
+      for (const selector of elementsToClick) {
+        await util.clickElementIfEnabled(page, selector);
+      }
+
+      await Promise.race([
+        page.waitForSelector(pageElement.computeTime, { visible: true }),
+        util.throwErrorOnElement(page, pageElement.alertWarning)
+      ]);
+
+      const buildTime = await page.$eval(pageElement.buildTime, (el) => el.textContent);
+      const computeTime = await page.$eval(pageElement.computeTime, (el) => el.textContent);
+
+      try {
+        const saveCanvasImageInputResult = await util.saveCanvasImage(
+          page,
+          pageElement.fastStyleTransferInputCanvas,
+          `${this.sample}/${example}_input`
+        );
+
+        const compareImageInputResults = util.compareImages(
+          saveCanvasImageInputResult.canvasPath,
+          `${this.expectedCanvas}/${example}_input.png`
+        );
+
+        if (compareImageInputResults < 95) {
+          throw new Error(
+            "Input image canvas is not the same as template. Please check if default selected image changes."
+          );
         }
 
-        await Promise.race([
-          page.waitForSelector(pageElement["computeTime"], { visible: true }),
-          util.throwErrorOnElement(page, pageElement.alertWarning)
-        ]);
+        const canvasImageName = `${this.sample}/${example}_output`;
+        const saveCanvasResult = await util.saveCanvasImage(
+          page,
+          pageElement.fastStyleTransferOutputCanvas,
+          canvasImageName
+        );
 
-        const buildTime = await page.$eval(pageElement.buildTime, (el) => el.textContent);
-        const computeTime = await page.$eval(pageElement["computeTime"], (el) => el.textContent);
-
-        let compareImageInputResults = 0;
-        let compareImagesOutputResults = 0;
-        try {
-          // compare the selected image of sample, throw error if the default image changed
-
-          const saveCanvasImageInputResult = await util.saveCanvasImage(
-            page,
-            pageElement.fastStyleTransferInputCanvas,
-            `${sample}/${example}_input`
-          );
-
-          // compare canvas to expected input canvas
-          compareImageInputResults = util.compareImages(
-            saveCanvasImageInputResult.canvasPath,
-            `${expectedCanvas}/${example}_input.png`
-          );
-
-          if (compareImageInputResults < 95) {
-            throw new Error(
-              "Input image canvas is not the same as template. Please check if default selected image changes."
-            );
-          }
-
-          const canvasImageName = `${sample}/${example}_output`;
-          const saveCanvasResult = await util.saveCanvasImage(
-            page,
-            pageElement.fastStyleTransferOutputCanvas,
-            canvasImageName
-          );
-
-          // compare canvas to expected canvas
-          const expectedCanvasPath = `${expectedCanvas}/${example}_output.png`;
-          compareImagesOutputResults = util.compareImages(saveCanvasResult.canvasPath, expectedCanvasPath);
-        } catch (error) {
-          console.log(error);
-        }
+        const expectedCanvasPath = `${this.expectedCanvas}/${example}_output.png`;
+        const compareImagesOutputResults = util.compareImages(saveCanvasResult.canvasPath, expectedCanvasPath);
 
         console.log("Compare images results: ", compareImagesOutputResults);
         if (compareImagesOutputResults < 80) {
           errorMsg += "Image result is not the same as template, please check saved images.";
         }
+      } catch (error) {
+        console.log(error);
+        errorMsg += error.message;
+      }
 
-        let pageResults = {
-          buildTime: util.formatTimeResult(buildTime),
-          inferenceTime: util.formatTimeResult(computeTime)
-        };
-        console.log("Test Results: ", pageResults);
+      lastResults = {
+        buildTime: util.formatTimeResult(buildTime),
+        inferenceTime: util.formatTimeResult(computeTime),
+        error: errorMsg
+      };
+    }
 
-        _.set(results, [sample, backend, dataType, model], pageResults);
-      }
-    } catch (error) {
-      errorMsg = error.message;
-      if (page) {
-        await util.saveScreenshot(page, screenshotFilename);
-      }
-      console.warn(errorMsg);
-    } finally {
-      _.set(results, [sample, backend, dataType, model, "error"], errorMsg.substring(0, config.errorMsgMaxLength));
-      if (browser) await browser.close();
-    }
-  };
-  // execute exact single sample with
-  if (backend && dataType && model) {
-    await testExecution(backend, dataType, model);
-  } else {
-    for (let _backend in config[source][sample]) {
-      // only loop the valid backends objects
-      if (!["cpu", "gpu", "npu"].includes(_backend)) {
-        continue;
-      }
-      for (let _dataType in config[source][sample][_backend]) {
-        for (let _model of config[source][sample][_backend][_dataType]) {
-          await testExecution(_backend, _dataType, _model);
-        }
-      }
-    }
+    return lastResults;
   }
-  return results;
+}
+
+async function fastStyleTransferTest({ config, backend, dataType, model } = {}) {
+  const sample = new FastStyleTransferSample(config);
+  return await sample.execute(backend, dataType, model);
 }
 
 module.exports = fastStyleTransferTest;
