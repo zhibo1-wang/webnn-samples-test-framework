@@ -1,84 +1,35 @@
 const util = require("../../utils/util.js");
 const pageElement = require("../../page-elements/samples.js");
-const _ = require("lodash");
+const BaseSample = require("./base-sample.js");
+
+class CodeEditorTest extends BaseSample {
+  constructor(config) {
+    super(config, "samples", "code-editor");
+  }
+
+  async run(page, backend, dataType, model) {
+    let errorMsg = "";
+    await page.waitForSelector(pageElement.codeLine);
+    for (let example of this.config[this.source][this.sample].examples) {
+      await page.click(pageElement.exampleSelect);
+      await page.waitForSelector(`${pageElement.exampleSelect} option`);
+      await page.select("select", example.name);
+      await util.delay(5000);
+      await page.waitForSelector(pageElement.codeLine);
+      await page.click(pageElement.runButton);
+      await util.delay(5000);
+      const actualValue = await page.$eval(pageElement.consoleLog, (el) => el.textContent);
+      if (actualValue !== example.expectedValue) {
+        errorMsg = `${errorMsg !== "" ? errorMsg + "\n " : ""}${example.name}: ${actualValue}`;
+      }
+    }
+    return errorMsg;
+  }
+}
 
 async function codeEditorTest({ config, backend, dataType, model } = {}) {
-  let source = "samples";
-  let sample = "codeEditor";
-  let results = {};
-
-  const testExecution = async (backend, dataType, model) => {
-    if (!["cpu", "gpu", "npu"].includes(backend)) {
-      console.warn(`Invalid backend: ${backend}`);
-      return;
-    }
-
-    console.log(`${source} ${sample} ${backend} ${dataType} ${model} testing...`);
-    let errorMsg = "";
-    let browser;
-
-    try {
-      browser = await util.launchBrowser(config);
-      const page = (await browser.pages())[0];
-      // set the default timeout time for the page
-      page.setDefaultTimeout(config["timeout"]);
-
-      // navigate the page to a URL
-      const url = config["samplesBasicUrl"] + config["samplesUrl"][sample];
-      await page.goto(url, {
-        waitUntil: "networkidle0"
-      });
-
-      // wait for code text display
-      await page.waitForSelector(pageElement["codeLine"]);
-      for (let example of config[source][sample]["examples"]) {
-        // click dropdown
-        await page.click(pageElement["exampleSelect"]);
-        // wait for option
-        await page.waitForSelector(`${pageElement["exampleSelect"]} option`);
-        // choose option
-        await page.select("select", example.name);
-        // wait for code text display
-        await util.delay(5000);
-        await page.waitForSelector(pageElement["codeLine"]);
-        // click run button
-        await page.click(pageElement["runButton"]);
-        // get console results
-        await util.delay(5000);
-        const actualValue = await page.$eval(pageElement["consoleLog"], (el) => el.textContent);
-        // set error if actual value does not equal to the expected value
-        if (actualValue !== example.expectedValue) {
-          // set only one error object for each backend, concat the error string for examples
-          errorMsg = `${errorMsg !== "" ? errorMsg + "\n " : ""}${example.name}: ${actualValue}`;
-        }
-      }
-    } catch (error) {
-      errorMsg = error.message;
-      console.log("Error occurred:", errorMsg);
-    } finally {
-      _.set(results, [sample, backend, dataType, model, "error"], errorMsg.substring(0, config.errorMsgMaxLength));
-      if (browser) {
-        await browser.close();
-      }
-    }
-  };
-
-  if (backend && dataType && model) {
-    await testExecution(backend, dataType, model);
-  } else {
-    for (let _backend in config[source][sample]) {
-      // only loop the valid backends objects
-      if (!["cpu", "gpu", "npu"].includes(_backend)) {
-        continue;
-      }
-      for (let _dataType in config[source][sample][_backend]) {
-        for (let _model of config[source][sample][_backend][_dataType]) {
-          await testExecution(_backend, _dataType, _model);
-        }
-      }
-    }
-  }
-  return results;
+  const test = new CodeEditorTest({ config });
+  return await test.execute(backend, dataType, model);
 }
 
 module.exports = codeEditorTest;
