@@ -83,3 +83,4 @@ async function fastStyleTransferTest({ config, backend, dataType, model } = {}) 
 }
 
 module.exports = fastStyleTransferTest;
+module.exports.FastStyleTransferSample = FastStyleTransferSample;
