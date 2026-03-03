@@ -96,7 +96,7 @@ const filters = {
   facialLandmarkDetection: "facialLandmarkDetection/*",
   handwrittenDigitsClassification: "handwrittenDigitsClassification/*",
   noiseSuppression: "noiseSuppression*",
-  switchSampleTest: "switchSampleTest/*",
+  switchSample: "switch-sample/*",
   stableDiffusion15: "stableDiffusion15/*",
   stableDiffusionTurbo: "stableDiffusionTurbo/*",
   segmentAnything: "segmentAnything/*",
@@ -113,7 +113,7 @@ const filterKeys = [
     "facialLandmarkDetection",
     "handwrittenDigitsClassification",
     "noiseSuppression",
-    "switchSampleTest"
+    "switchSample"
   ],
   ["stableDiffusion15", "stableDiffusionTurbo", "segmentAnything", "whisperBase"]
 ];

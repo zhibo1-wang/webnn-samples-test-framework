@@ -60,10 +60,6 @@ class ObjectDetectionTest extends BaseSample {
       inferenceTime: pageResults.inferenceTime
     };
   }
-
-  async getAdditionalErrorMsg(page) {
-    return await util.getAlertWarning(page, pageElement.alertWarning);
-  }
 }
 
 async function objectDetectionTest({ config, backend, dataType, model } = {}) {

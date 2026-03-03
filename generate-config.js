@@ -25,12 +25,12 @@ function filterSamplesWithDevices(config, devices) {
 
   function removeInvalidSamples(samples, devices) {
     Object.keys(samples).forEach((sampleName) => {
-      // remove the `switchSampleTest` if devices do not include cpu & gpu
+      // remove the `switch-sample` if devices do not include cpu & gpu
       // cause the sub samples are executed both on cpu and gpu
       const sample = samples[sampleName];
-      if (sampleName === "switchSampleTest") {
+      if (sampleName === "switch-sample") {
         if (!devices.includes("cpu") || !devices.includes("gpu")) delete samples[sampleName];
-      } else if (sampleName === "switchBackendTest") {
+      } else if (sampleName === "switch-backend") {
         // if the devices just include one, then the backend could not be switched
         const firstSample = sample.samples[Object.keys(sample.samples)[0]];
         if (devices.length < 2 || !devices.some((device) => firstSample[device])) {
@@ -178,9 +178,9 @@ const ORIGINAL_CONFIG = {
         "dataType: float32<br>shape: [2]<br>tensor: [1, 2]<br><br>dataType: float32<br>shape: [2]<br>tensor: [3, 4]"
     },
     "switch-sample": {
-      order: ["imageClassification", "fastStyleTransfer", "objectDetection"],
+      order: ["image-classification", "fast-style-transfer", "object-detection"],
       samples: {
-        imageClassification: {
+        "image-classification": {
           gpu: {
             fp16: ["resNet50V1"]
           },
@@ -188,13 +188,13 @@ const ORIGINAL_CONFIG = {
             fp32: ["mobileNetV2"]
           }
         },
-        fastStyleTransfer: {
+        "fast-style-transfer": {
           gpu: {
             fp32: ["fastStyleTransfer"]
           },
           examples: ["starryNight"]
         },
-        objectDetection: {
+        "object-detection": {
           cpu: {
             fp32: ["tinyYoloV2"]
           }
@@ -204,7 +204,7 @@ const ORIGINAL_CONFIG = {
     "switch-backend": {
       rounds: 50,
       samples: {
-        imageClassification: {
+        "image-classification": {
           cpu: {
             fp32: ["mobileNetV2"]
           },

@@ -52,3 +52,4 @@ async function imageClassificationTest({ config, backend, dataType, model } = {}
 }
 
 module.exports = imageClassificationTest;
+module.exports.ImageClassificationTest = ImageClassificationTest;

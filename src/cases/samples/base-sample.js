@@ -1,31 +1,55 @@
 const util = require("../../utils/util.js");
 const _ = require("lodash");
 
+/**
+ * Base class for all sample tests.
+ * Provides common functionality for browser management, result handling, and navigation.
+ */
 class BaseSample {
   constructor(config, source, sample) {
     this.config = config;
+    this.sampleConfig = this.config[this.source][this.sample];
     this.source = source;
     this.sample = sample;
-    this.results = {};
   }
 
+  /**
+   * Main entry point for running tests
+   * @param {string} [backend] - Optional backend filter
+   * @param {string} [dataType] - Optional dataType filter
+   * @param {string} [model] - Optional model filter
+   */
   async execute(backend, dataType, model) {
     if (backend && dataType && model) {
-      await this.testExecution(backend, dataType, model);
+      return _.set({}, [this.sample, backend, dataType, model], await this.runCase(backend, dataType, model));
     } else {
-      for (let _backend in this.config[this.source][this.sample]) {
-        if (!["cpu", "gpu", "npu"].includes(_backend)) continue;
-        for (let _dataType in this.config[this.source][this.sample][_backend]) {
-          for (let _model of this.config[this.source][this.sample][_backend][_dataType]) {
-            await this.testExecution(_backend, _dataType, _model);
-          }
+      return await this.runCases();
+    }
+  }
+
+  /**
+   * Run all test cases by iterating through config
+   */
+  async runCases() {
+    let results = {};
+    for (let backend in this.sampleConfig) {
+      if (!["cpu", "gpu", "npu"].includes(backend)) continue;
+      for (let dataType in this.sampleConfig[backend]) {
+        for (let model of this.sampleConfig[backend][dataType]) {
+          _.merge(
+            results,
+            _.set({}, [this.sample, backend, dataType, model], await this.runCase(backend, dataType, model))
+          );
         }
       }
     }
-    return this.results;
+    return results;
   }
 
-  async testExecution(backend, dataType, model) {
+  /**
+   * Run a single test case with browser lifecycle management
+   */
+  async runCase(backend, dataType, model) {
     if (!["cpu", "gpu", "npu"].includes(backend)) {
       console.warn(`Invalid backend: ${backend}`);
       return;
@@ -33,61 +57,30 @@ class BaseSample {
 
     console.log(`${this.source} ${this.sample} ${backend} ${dataType} ${model} testing...`);
     const screenshotFilename = `${this.source}_${this.sample}_${backend}_${dataType}_${model}`;
-    let errorMsg = "";
-    let data = null;
-    let browser;
-    let page;
-
+    let browser = null;
+    let page = null;
     try {
       browser = await util.launchBrowser(this.config);
       page = (await browser.pages())[0];
       page.setDefaultTimeout(this.config.timeout);
 
-      await this.navigate(page);
-      const result = await this.run(page, backend, dataType, model);
-      if (typeof result === "string") {
-        errorMsg = result;
-      } else if (result && typeof result === "object") {
-        data = result;
-      }
-      await util.saveScreenshot(page, screenshotFilename);
+      const url = `${this.config.samplesBasicUrl}${this.config.samplesUrl[this.sample]}`;
+      await page.goto(url, { waitUntil: "networkidle0" });
+      return await this.run(page, backend, dataType, model);
     } catch (error) {
-      errorMsg = error.message;
-      if (page) {
-        await util.saveScreenshot(page, screenshotFilename);
-        errorMsg += await this.getAdditionalErrorMsg(page);
-      }
-      console.warn(errorMsg);
+      console.warn(error.message);
+      return error.message;
     } finally {
-      this.setResults(backend, dataType, model, data, errorMsg);
+      if (page) await util.saveScreenshot(page, screenshotFilename);
       if (browser) await browser.close();
     }
   }
 
-  async navigate(page) {
-    const url = `${this.config.samplesBasicUrl}${this.config.samplesUrl[this.sample]}`;
-    await page.goto(url, { waitUntil: "networkidle0" });
-  }
-
+  /**
+   * Run the actual test logic - must be implemented by subclasses
+   */
   async run(page, backend, dataType, model) {
     throw new Error("run() must be implemented");
-  }
-
-  async getAdditionalErrorMsg(page) {
-    return "";
-  }
-
-  setResults(backend, dataType, model, data, errorMsg) {
-    const path = [this.sample, backend, dataType, model];
-    if (errorMsg) {
-      _.set(this.results, [...path, "error"], errorMsg.substring(0, this.config.errorMsgMaxLength));
-    } else {
-      _.set(this.results, [...path, "error"], "");
-      if (data) {
-        const current = _.get(this.results, path, {});
-        _.set(this.results, path, _.merge(current, data));
-      }
-    }
   }
 }
 

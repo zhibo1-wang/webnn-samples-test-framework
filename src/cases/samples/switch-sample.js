@@ -2,304 +2,73 @@
  * Test different samples in the same browser tab
  * Supported Sample list: image_classification, fast_style_transfer, object_detection
  */
-const util = require("../../utils/util.js");
-const pageElement = require("../../page-elements/samples.js");
 const _ = require("lodash");
-const path = require("path");
+const util = require("../../utils/util.js");
+const BaseSwitchTest = require("./base-switch-test.js");
+const { ImageClassificationTest } = require("./image-classification.js");
+const { FastStyleTransferSample } = require("./fast-style-transfer.js");
+const { ObjectDetectionTest } = require("./object-detection.js");
+
+class SwitchSampleTest extends BaseSwitchTest {
+  constructor(config) {
+    super(config, "samples", "switch-sample");
+    this.tests = {
+      "image-classification": new ImageClassificationTest(config),
+      "fast-style-transfer": new FastStyleTransferSample(config),
+      "object-detection": new ObjectDetectionTest(config)
+    };
+  }
+
+  async run(page) {
+    const results = {};
+    const sampleConfig = this.sampleConfig;
+
+    for (const sampleKey of sampleConfig.order) {
+      const test = this.tests[sampleKey];
+      if (!test) {
+        console.log("Not support this sample:", sampleKey);
+        continue;
+      }
+      const sampleResults = await this.runSampleTest(page, sampleKey, test);
+      _.merge(results, sampleResults);
+    }
+    return results;
+  }
+
+  async runSampleTest(page, sampleKey, test) {
+    const results = {};
+    const sampleConfig = this.sampleConfig.samples[sampleKey];
+
+    for (const backend in sampleConfig) {
+      if (!["cpu", "gpu", "npu"].includes(backend)) continue;
+
+      for (const dataType in sampleConfig[backend]) {
+        for (const model of sampleConfig[backend][dataType]) {
+          const screenshotSuffix = `${sampleKey}_${backend}_${dataType}_${model}`;
+          console.log(`${this.source} ${this.sample} ${sampleKey} ${backend} ${dataType} ${model} testing...`);
+
+          const resultPath = [sampleKey, backend, dataType, model];
+          try {
+            await this.navigate(page, sampleKey);
+            const result = await test.run(page, backend, dataType, model);
+            await util.saveScreenshot(page, screenshotSuffix);
+            _.set(results, resultPath, { ...result, error: "" });
+          } catch (error) {
+            await util.saveScreenshot(page, screenshotSuffix);
+            console.warn(error.message);
+            _.set(results, [...resultPath, "error"], error.message.substring(0, this.config.errorMsgMaxLength));
+          }
+        }
+      }
+    }
+    return results;
+  }
+}
 
 async function switchSampleTest({ config }) {
-  let totalResults = {};
-
-  const source = "samples";
-  const sampleTest = "switchSampleTest";
-  const expectedCanvas = path.join(path.resolve(__dirname), "../../../assets/canvas");
-  totalResults[sampleTest] = {};
-
-  console.log(`${source} ${sampleTest} testing...`);
-  let browser = await util.launchBrowser(config);
-
-  const page = (await browser.pages())[0];
-  page.setDefaultTimeout(config["timeout"]);
-
-  // navigate the page to sample
-  for (const sample of config[source][sampleTest]["order"]) {
-    switch (sample) {
-      case "imageClassification":
-        _.merge(totalResults[sampleTest], await imageClassificationTest());
-        break;
-      case "fastStyleTransfer":
-        _.merge(totalResults[sampleTest], await fastStyleTransferTest());
-        break;
-      case "objectDetection":
-        _.merge(totalResults[sampleTest], await objectDetectionTest());
-        break;
-      default:
-        console.log("Not support this sample:", sample);
-    }
-  }
-
-  await browser.close();
-  return totalResults;
-
-  async function imageClassificationTest() {
-    const _sample = "imageClassification";
-    let results = {};
-
-    for (let _backend in config[source][sampleTest]["samples"][_sample]) {
-      if (!["cpu", "gpu", "npu"].includes(_backend)) {
-        continue;
-      }
-
-      for (let _dataType in config[source][sampleTest]["samples"][_sample][_backend]) {
-        for (let _model of config[source][sampleTest]["samples"][_sample][_backend][_dataType]) {
-          const screenshotFilename = `${source}_${sampleTest}_${_sample}_${_backend}_${_dataType}_${_model}`;
-          try {
-            console.log(`${source} ${sampleTest} ${_sample} ${_backend} ${_dataType} ${_model} testing...`);
-
-            await page.goto(`${config["samplesBasicUrl"]}${config["samplesUrl"][_sample]}`, {
-              waitUntil: "networkidle0"
-            });
-
-            await page.waitForSelector(`::-p-xpath(${pageElement.backendText})`);
-            const elementsToClick = [pageElement[_backend], pageElement[_dataType], pageElement[_model]];
-
-            for (const selector of elementsToClick) {
-              await util.clickElementIfEnabled(page, selector);
-            }
-
-            // wait for model running results
-            await Promise.race([
-              page.waitForSelector(pageElement["computeTime"], { visible: true }),
-              util.throwErrorOnElement(page, pageElement.alertWarning)
-            ]);
-
-            // get results
-            const loadTime = await page.$eval(pageElement["loadTime"], (el) => el.textContent);
-            const buildTime = await page.$eval(pageElement["buildTime"], (el) => el.textContent);
-            const computeTime = await page.$eval(pageElement["computeTime"], (el) => el.textContent);
-
-            const label0 = await page.$eval(pageElement["label0"], (el) => el.textContent);
-            const prob0 = await page.$eval(pageElement["prob0"], (el) => el.textContent);
-            const label1 = await page.$eval(pageElement["label1"], (el) => el.textContent);
-            const prob1 = await page.$eval(pageElement["prob1"], (el) => el.textContent);
-            const label2 = await page.$eval(pageElement["label2"], (el) => el.textContent);
-            const prob2 = await page.$eval(pageElement["prob2"], (el) => el.textContent);
-
-            // set results
-            let pageResults = {
-              loadTime: util.formatTimeResult(loadTime),
-              buildTime: util.formatTimeResult(buildTime),
-              inferenceTime: util.formatTimeResult(computeTime),
-              labe0: label0,
-              probability0: prob0,
-              label1: label1,
-              probability1: prob1,
-              label2: label2,
-              probability2: prob2,
-            };
-
-            pageResults = util.replaceEmptyData(pageResults);
-            console.log("Test Results: ", pageResults);
-
-            _.set(results, [_sample, _backend, _dataType, _model, "buildTime"], pageResults.buildTime);
-            _.set(results, [_sample, _backend, _dataType, _model, "inferenceTime"], pageResults.inferenceTime);
-            await util.saveScreenshot(page, screenshotFilename);
-          } catch (error) {
-            if (page) {
-              await util.saveScreenshot(page, screenshotFilename);
-            }
-            console.warn(error.message);
-            _.set(
-              results,
-              [_sample, _backend, _dataType, _model, "error"],
-              error.message.substring(0, config.errorMsgMaxLength)
-            );
-          } finally {
-          }
-        }
-      }
-    }
-
-    return results;
-  }
-
-  async function fastStyleTransferTest() {
-    const _sample = "fastStyleTransfer";
-    let results = {};
-
-    for (let _backend in config[source][sampleTest]["samples"][_sample]) {
-      if (!["cpu", "gpu", "npu"].includes(_backend)) {
-        continue;
-      }
-
-      for (let _dataType in config[source][sampleTest]["samples"][_sample][_backend]) {
-        for (let _model of config[source][sampleTest]["samples"][_sample][_backend][_dataType]) {
-          let errorMsg = "";
-
-          const screenshotFilename = `${source}_${sampleTest}_${_sample}_${_backend}_${_dataType}_${_model}`;
-          console.log(`${source} ${sampleTest} ${_sample} ${_backend} ${_dataType} ${_model} testing...`);
-
-          try {
-            await page.goto(`${config["samplesBasicUrl"]}${config["samplesUrl"][_sample]}`, {
-              waitUntil: "networkidle0"
-            });
-
-            await page.waitForSelector(`::-p-xpath(${pageElement.backendText})`);
-
-            for (const example of config[source][sampleTest]["samples"][_sample]["examples"]) {
-              const elementsToClick = [pageElement[_backend], pageElement[example]];
-              for (const selector of elementsToClick) {
-                await util.clickElementIfEnabled(page, selector);
-              }
-
-              await Promise.race([
-                page.waitForSelector(pageElement["computeTime"], { visible: true }),
-                util.throwErrorOnElement(page, pageElement.alertWarning)
-              ]);
-
-              const computeTime = await page.$eval(pageElement["computeTime"], (el) => el.textContent);
-
-              let compareImagesResults = 0;
-              try {
-                const canvasImageName = `${sampleTest}_${_sample}_${_backend}_${_dataType}_${_model}`;
-                const saveCanvasResult = await util.saveCanvasImage(
-                  page,
-                  pageElement.fastStyleTransferOutputCanvas,
-                  canvasImageName
-                );
-
-                // compare canvas to expected canvas
-                const expectedCanvasPath = `${expectedCanvas}/fast-style-transfer/${_sample}_${example}_output.png`;
-                compareImagesResults = util.compareImages(saveCanvasResult.canvasPath, expectedCanvasPath);
-              } catch (error) {
-                console.log(error);
-              }
-
-              console.log("Compare images results: ", compareImagesResults);
-              if (compareImagesResults < 80) {
-                errorMsg += "Image result is not the same as template, please check saved images.";
-              }
-
-              let pageResults = {
-                inferenceTime: util.formatTimeResult(computeTime)
-              };
-              console.log("Test Results: ", pageResults);
-
-              _.set(results, [_sample, _backend, _dataType, _model], pageResults);
-            }
-          } catch (error) {
-            errorMsg = error.message;
-            if (page) {
-              await util.saveScreenshot(page, screenshotFilename);
-            }
-            console.warn(errorMsg);
-          } finally {
-            _.set(
-              results,
-              [_sample, _backend, _dataType, _model, "error"],
-              errorMsg.substring(0, config.errorMsgMaxLength)
-            );
-          }
-        }
-      }
-    }
-
-    return results;
-  }
-
-  async function objectDetectionTest() {
-    const _sample = "objectDetection";
-    let results = {};
-
-    for (let _backend in config[source][sampleTest]["samples"][_sample]) {
-      if (!["cpu", "gpu", "npu"].includes(_backend)) {
-        continue;
-      }
-      for (let _dataType in config[source][sampleTest]["samples"][_sample][_backend]) {
-        for (let _model of config[source][sampleTest]["samples"][_sample][_backend][_dataType]) {
-          let errorMsg = "";
-          const screenshotFilename = `${source}_${sampleTest}_${_sample}_${_backend}_${_dataType}_${_model}`;
-
-          try {
-            console.log(`${source} ${sampleTest} ${_sample} ${_backend} ${_dataType} ${_model} testing...`);
-
-            // navigate the page to a URL
-            await page.goto(`${config["samplesBasicUrl"]}${config["samplesUrl"][_sample]}`, {
-              waitUntil: "networkidle0"
-            });
-
-            // wait for page text display
-            await page.waitForSelector(`::-p-xpath(${pageElement.backendText})`);
-            // choose backend and model
-            const elementsToClick = [pageElement[_backend], pageElement[_dataType], pageElement[_model]];
-            for (const selector of elementsToClick) {
-              await util.clickElementIfEnabled(page, selector);
-            }
-
-            // wait for model running results
-            await Promise.race([
-              page.waitForSelector(pageElement["computeTime"], { visible: true }),
-              util.throwErrorOnElement(page, pageElement.alertWarning)
-            ]);
-
-            // save canvas image
-            let compareImagesResults = 0;
-            const canvasImageName = `${sampleTest}_${_sample}_${_backend}_${_dataType}_${_model}`;
-            const saveCanvasResult = await util.saveCanvasImage(
-              page,
-              pageElement.objectDetectionCanvas,
-              canvasImageName
-            );
-
-            // compare canvas to expected canvas
-            const expectedCanvasPath = `${expectedCanvas}/${_sample}_${_model}.png`;
-            compareImagesResults = util.compareImages(saveCanvasResult.canvasPath, expectedCanvasPath);
-
-            console.log("Compare images results with the template image:", compareImagesResults);
-
-            if (compareImagesResults < 95) {
-              errorMsg += "Image result is not the same as template, please check saved images.";
-            }
-
-            // get results
-            const loadTime = await page.$eval(pageElement["loadTime"], (el) => el.textContent);
-            const buildTime = await page.$eval(pageElement["buildTime"], (el) => el.textContent);
-            const computeTime = await page.$eval(pageElement["computeTime"], (el) => el.textContent);
-
-            // set results
-            let pageResults = {
-              loadTime: util.formatTimeResult(loadTime),
-              buildTime: util.formatTimeResult(buildTime),
-              inferenceTime: util.formatTimeResult(computeTime),
-              compareImagesResults,
-              error: errorMsg
-            };
-
-            pageResults = util.replaceEmptyData(pageResults);
-            console.log("Test results: ", pageResults);
-
-            _.set(results, [_sample, _backend, _dataType, _model, "inferenceTime"], pageResults.inferenceTime);
-
-            await util.saveScreenshot(page, screenshotFilename);
-          } catch (error) {
-            errorMsg = error.message;
-            if (page) {
-              await util.saveScreenshot(page, screenshotFilename);
-            }
-            console.warn(errorMsg);
-          } finally {
-            _.set(
-              results,
-              [_sample, _backend, _dataType, _model, "error"],
-              errorMsg.substring(0, config.errorMsgMaxLength)
-            );
-          }
-        }
-      }
-    }
-
-    return results;
-  }
+  const test = new SwitchSampleTest(config);
+  const results = await test.execute();
+  return { [test.sample]: results };
 }
 
 module.exports = switchSampleTest;
