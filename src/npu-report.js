@@ -17,7 +17,7 @@ const tests = {
   "developer-preview-stable-diffusion-turbo-fp16": "developer-preview.stable-diffusion-turbo.npu.fp16.textEncoder",
   "developer-preview-segment-anything-fp16": "developer-preview.segment-anything.npu.fp16.encoder",
   "developer-preview-whisper-base-fp16": "developer-preview.whisper-base.npu.fp16.encoder",
-  "developer-preview-image-classification-fp16": "developer-preview.image-classification.npu.fp16.mobileNetV2",
+  "developer-preview-image-classification-fp16": "developer-preview.image-classification.npu.fp16.mobilenet-v2"
 };
 
 let result = {};
