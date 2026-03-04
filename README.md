@@ -84,6 +84,33 @@ Specify the sample with `-f` or `--filter` option. Multiple samples can be speci
 $ npm test -- -f samples-image-classification-cpu-fp32-mobileNetV2
 ```
 
+### Test with wildcard filters
+
+Use `*` in the filter to match multiple samples at once. Quote the pattern to prevent shell glob expansion.
+
+```shell
+# Test all object-detection samples
+$ npm test -- -f "samples-object-detection-*"
+
+# Test all gpu samples
+$ npm test -- -f "samples-*-gpu-*"
+
+# Test all developer-preview image-classification samples
+$ npm test -- -f "developer-preview-image-classification-*"
+
+# Combine multiple wildcard filters
+$ npm test -- -f "samples-object-detection-*" "developer-preview-image-classification-gpu-*"
+```
+
+When a wildcard filter is expanded, the matched filters will be printed:
+```
+Filter "samples-object-detection-*" expanded to:
+  samples-object-detection-cpu-fp32-tinyYoloV2
+  samples-object-detection-cpu-fp32-ssdMobileNetV1
+  samples-object-detection-gpu-fp16-tinyYoloV2
+  ...
+```
+
 ## Support
 
 #### Dependency

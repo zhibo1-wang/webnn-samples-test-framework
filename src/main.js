@@ -11,15 +11,48 @@ const sessionCreate = require("./cases/session-create.js");
 const ortLibraryPath = require("./cases/ort-library-path.js");
 
 const parseFilter = (filter) => {
-  const regexPattern =
-    /^(samples|developer-preview)-([a-zA-Z0-9-]+)-(cpu|gpu|npu)(?:-(fp16|fp32|_))?(?:-([a-zA-Z0-9_]+|_))?$/;
-  const match = filter.match(regexPattern);
-  if (!match) {
-    return null;
+  // Full filter: source-sample-backend-dataType-model
+  const fullPattern =
+    /^(samples|developer-preview)-([a-zA-Z0-9-]+)-(cpu|gpu|npu)(?:-(fp16|fp32|_))?(?:-([a-zA-Z0-9_-]+|_))?$/;
+  const fullMatch = filter.match(fullPattern);
+  if (fullMatch) {
+    const [, source, sampleName, backend, dataType, model] = fullMatch;
+    return { sampleName, source, backend, dataType, model };
   }
 
-  const [, source, sampleName, backend, dataType, model] = match;
-  return { sampleName, source, backend, dataType, model };
+  // Short filter for special samples (no backend/dataType/model): source-sample
+  const shortPattern = /^(samples|developer-preview)-([a-zA-Z0-9-]+)$/;
+  const shortMatch = filter.match(shortPattern);
+  if (shortMatch) {
+    const [, source, sampleName] = shortMatch;
+    return { sampleName, source };
+  }
+
+  return null;
+};
+
+/**
+ * Expand a filter pattern that may contain `*` wildcards into concrete filter objects.
+ * e.g. "samples-object-detection-*" matches all filters starting with "samples-object-detection-".
+ * @param {string} pattern - The filter pattern, where trailing parts can be `*`.
+ * @param {string[]} allFilters - All available filter strings from config.
+ * @returns {Object[]|null} Array of parsed filter objects, or null if pattern is invalid.
+ */
+const expandFilter = (pattern, allFilters) => {
+  if (!pattern.includes("*")) {
+    const parsed = parseFilter(pattern);
+    return parsed ? [parsed] : null;
+  }
+
+  // Split on *, escape each literal segment, join with .+ (match one or more characters)
+  const segments = pattern.split("*");
+  const regexStr = "^" + segments.map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(".+") + "$";
+  const regex = new RegExp(regexStr);
+
+  const matched = allFilters.filter((f) => regex.test(f));
+  if (matched.length === 0) return null;
+  console.log(`Filter "${pattern}" expanded to:\n${matched.map((f) => `  ${f}`).join("\n")}`);
+  return matched.map(parseFilter).filter(Boolean);
 };
 
 const executeTestModule = async ({ config, sampleName, source, backend, dataType, model, results }) => {
@@ -53,16 +86,19 @@ program.action(async ({ config: configPath, env: envName, filters, browserDir, u
     console.table(util.generateSupportedSamplesArray(config));
     return;
   } else if (Array.isArray(filters)) {
-    for (let i = 0; i < filters.length; i++) {
-      const parsedFilter = parseFilter(filters[i]);
-      if (!parsedFilter) {
-        console.error(`Invalid filter: ${filters[i]}`);
+    const allFilters = util.generateSupportedSamplesArray(config);
+    const expanded = [];
+    for (const pattern of filters) {
+      const parsed = expandFilter(pattern, allFilters);
+      if (!parsed) {
+        console.error(`Invalid filter or no match: ${pattern}`);
         console.log("Available filters:");
-        console.table(util.generateSupportedSamplesArray(config));
+        console.table(allFilters);
         return;
       }
-      filters[i] = parsedFilter;
+      expanded.push(...parsed);
     }
+    filters = expanded;
   }
 
   util.killBrowserProcess(config);

@@ -55,8 +55,20 @@ function generateSupportedSamplesArray(config) {
     return result;
   }
 
+  function addSpecialSamples(source, samples) {
+    for (const name of Object.keys(samples)) {
+      const sample = samples[name];
+      // If the sample has no backend keys, it's a special sample (e.g. switch-sample, switch-backend)
+      if (!["cpu", "gpu", "npu"].some((d) => sample[d])) {
+        allSupportedSamples.push(`${source}-${name}`);
+      }
+    }
+  }
+
   allSupportedSamples.push(...parseJSON(config.samples, ["samples"]));
+  if (config.samples) addSpecialSamples("samples", config.samples);
   allSupportedSamples.push(...parseJSON(config["developer-preview"], ["developer-preview"]));
+  if (config["developer-preview"]) addSpecialSamples("developer-preview", config["developer-preview"]);
   return allSupportedSamples;
 }
 
