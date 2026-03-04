@@ -98,7 +98,7 @@ class BaseSample {
         // Ignore errors when checking chrome://gpu
       }
       console.warn(errorMessage);
-      return errorMessage;
+      return { error: errorMessage };
     } finally {
       if (page) await util.saveScreenshot(page, screenshotFilename);
       if (browser) await browser.close();
