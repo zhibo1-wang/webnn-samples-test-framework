@@ -12,6 +12,7 @@ const env = util.getEnv();
 async function renderResultsAsHTML(data) {
   const failuresSamples = [];
   const memoryConsumptionData = {};
+  const tokenPerSecondResult = {};
 
   function traverse(obj, path = [], result) {
     for (const key in obj) {
@@ -44,6 +45,11 @@ async function renderResultsAsHTML(data) {
           memoryConsumptionData[variable] = {};
         }
         memoryConsumptionData[variable][key] = obj[key];
+      }
+      // collect tokens per second data
+      else if (key === "tokensPerSecond" && !obj["error"]) {
+        const variable = path.join("-");
+        tokenPerSecondResult[variable] = { tokensPerSecond: obj[key] };
       } else {
         traverse(obj[key], [...path, key], result);
       }
@@ -54,31 +60,12 @@ async function renderResultsAsHTML(data) {
   traverse({ samples: data.samples, "developer-preview": data["developer-preview"] }, [], result);
   const inferenceTimeResult = Object.fromEntries(Object.entries(result).filter(([_, value]) => value.inferenceTime));
   const firstAverageMedianBestResult = Object.fromEntries(Object.entries(result).filter(([_, value]) => value.average));
-  const tokenPerSecondResult = {};
-  for (let [key, value] of Object.entries(result).filter(([_, value]) => value.tokensPerSecond)) {
-    let prefix = key.split("-").slice(0, -1).join("-");
-    let model = key.split("-").slice(-1)[0];
-    if (!tokenPerSecondResult[prefix]) {
-      tokenPerSecondResult[prefix] = { models: [model], tokensPerSecond: value.tokensPerSecond };
-    } else if (tokenPerSecondResult[prefix].tokensPerSecond !== value.tokensPerSecond) {
-      tokenPerSecondResult[key] = { models: [], tokensPerSecond: value.tokensPerSecond };
-    } else {
-      tokenPerSecondResult[prefix].models.push(model);
-    }
-  }
   let aggregatedFailures = {};
   for (let failure of failuresSamples) {
-    let key = failure.variable.split("-").slice(0, -1).join("-");
-    let model = failure.variable.split("-").slice(-1)[0];
-    if (aggregatedFailures[key]?.error === failure.error) {
-      aggregatedFailures[key].models.push(model);
-    } else {
-      aggregatedFailures[key] = {
-        variable: key,
-        models: [model],
-        error: failure.error
-      };
-    }
+    aggregatedFailures[failure.variable] = {
+      variable: failure.variable,
+      error: failure.error
+    };
   }
 
   const engine = new Liquid({
@@ -94,7 +81,7 @@ async function renderResultsAsHTML(data) {
     .renderFile("mail.liquid", {
       header: env.emailService.header,
       failed: failuresSamples.length,
-      total: Object.entries(result).length + failuresSamples.length,
+      total: Object.entries(result).length + Object.entries(tokenPerSecondResult).length + failuresSamples.length,
       failedCases: Object.values(aggregatedFailures),
       deviceInfo: data.deviceInfo,
       sessionCreate: data.sessionCreate,

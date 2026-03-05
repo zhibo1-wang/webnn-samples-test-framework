@@ -57,19 +57,13 @@
         <thead>
         <tr>
             <th>Test Case</th>
-            <th>Models</th>
             <th>Error</th>
         </tr>
         </thead>
         <tbody>
         {% for case in failedCases %}
             <tr>
-                {% if case.models.length == 1 %}
-                    <td colspan="2">{{ case.variable }}-{{ case.models | join: ", " }}</td>
-                {% else %}
-                    <td>{{ case.variable }}</td>
-                    <td>{{ case.models | join: ", " }}</td>
-                {% endif %}
+                <td>{{ case.variable }}</td>
                 <td>{{ case.error | split: "\n" | join: "<br>" }}</td>
             </tr>
         {% endfor %}
@@ -184,7 +178,6 @@
         <thead>
         <tr>
             <th>Demo</th>
-            <th>Models</th>
             <th>Tokens<br>Per Second</th>
         </tr>
         </thead>
@@ -193,7 +186,6 @@
             {% if item[1].tokensPerSecond %}
                 <tr>
                     <td>{{ item[0] }}</td>
-                    <td>{{ item[1].models | join: ", " }}</td>
                     <td>{{ item[1].tokensPerSecond }}</td>
                 </tr>
             {% endif %}

@@ -48,10 +48,7 @@ class WhisperBase extends DeveloperPreviewSample {
 
     console.log(`Test results- realtime:${xRealtime}, timeToFirstToken:${timeToFirstToken} `);
 
-    return ["encoder", "decoder", "decoderKvCache"].reduce((acc, model) => {
-      acc[model] = { tokensPerSecond };
-      return acc;
-    }, {});
+    return { tokensPerSecond };
   }
 }
 
