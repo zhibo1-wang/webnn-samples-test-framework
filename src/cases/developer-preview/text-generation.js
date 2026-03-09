@@ -17,7 +17,8 @@ class TextGeneration extends DeveloperPreviewSample {
       (async () => {
         await util.waitForElementEnabled(page, "#send-button");
         for (const { question, answer } of this.sampleConfig.cases) {
-          await page.type("#user-input", "This is a correctness test. " + question);
+          // It must be such a system prompt to make it function normally.
+          await page.type("#user-input", "You are a helpful AI assistant. " + question);
           await page.click("#send-button");
           await util.waitForElementEnabled(page, "#send-button");
 
