@@ -75,19 +75,65 @@
 {% if deviceInfo %}
     <h3>Device Information</h3>
     <table>
-        <thead>
-        <tr>
-            <th>Category</th>
-            <th>Details</th>
-        </tr>
-        </thead>
         <tbody>
-        {% for info in deviceInfo %}
+        <tr>
+            <th>Hostname</th>
+            <td>{{ deviceInfo.hostname }}</td>
+            <th>Platform</th>
+            <td>{{ deviceInfo.platform }}</td>
+        </tr>
+        <tr>
+            <th>CPU</th>
+            <td>{{ deviceInfo.cpuName }}</td>
+            <th>RAM</th>
+            <td>{{ deviceInfo.installedMemoryGb }} GB</td>
+        </tr>
+        {% if deviceInfo.gpuName %}
             <tr>
-                <td>{{ info[0] }}</td>
-                <td>{{ info[1] | join: " " }}</td>
+                <th>GPU</th>
+                <td>{{ deviceInfo.gpuName }} ({{ deviceInfo.gpuVendorId }}:{{ deviceInfo.gpuDeviceId }})</td>
+                <th>Driver version</th>
+                <td>{{ deviceInfo.gpuDriverVersion }}</td>
             </tr>
-        {% endfor %}
+        {% endif %}
+        {% if deviceInfo.npuName %}
+            <tr>
+                <th>NPU</th>
+                <td>{{ deviceInfo.npuName }} ({{ deviceInfo.npuManufacturer }})</td>
+                <th>Driver version</th>
+                <td>{{ deviceInfo.npuDriverVersion }}</td>
+            </tr>
+        {% endif %}
+        <tr>
+            <th>Browser</th>
+            <td>{{ deviceInfo.browser }}</td>
+            {% if deviceInfo.chromeVersion %}
+                <th>Chrome version</th>
+                <td>{{ deviceInfo.chromeVersion }}</td>
+            {% else %}
+                <th>Edge version</th>
+                <td>{{ deviceInfo.edgeVersion }}</td>
+            {% endif %}
+        </tr>
+        <tr>
+            <th>Command line</th>
+            <td colspan="3">
+                "{{ deviceInfo.browserPath }}"
+                <span style="font-size: 12px; color: gray">{{ deviceInfo.browserArgs | join: " " }}</span>
+            </td>
+        </tr>
+        <tr>
+            <th>Samples URL</th>
+            <td colspan="3">{{ deviceInfo.samplesUrl }}</td>
+        </tr>
+        <tr>
+            <th>Developer preview URL</th>
+            <td colspan="3">{{ deviceInfo.developerPreviewUrl }}</td>
+        </tr>
+        <tr>
+            <th>Backend</th>
+            <td colspan="3">{{ deviceInfo.backend }}</td>
+        </tr>
         </tbody>
     </table>
     <br>
