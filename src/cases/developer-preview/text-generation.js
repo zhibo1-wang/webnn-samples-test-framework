@@ -33,11 +33,18 @@ class TextGeneration extends DeveloperPreviewSample {
           result.tps.push(util.formatTimeResult(tokensPerSecond));
 
           const lastResponse = await page.$$(".response-message");
-          const responseText = await (
-            await lastResponse[lastResponse.length - 1].getProperty("textContent")
-          ).jsonValue();
-          if (responseText.trim() !== answer.trim()) {
-            throw new Error(`Got "${responseText.trim()}", expected "${answer.trim()}" for the question "${question}"`);
+          let responseText = (
+            await (await lastResponse[lastResponse.length - 1].getProperty("textContent")).jsonValue()
+          ).trim();
+          if (responseText !== answer.trim()) {
+            if (responseText.length > 64) {
+              throw new Error(
+                `Got "${responseText.slice(0, 64)}" and ${responseText.length - 64} more bytes, ` +
+                  `expected "${answer.trim()}" for the question "${question}"`
+              );
+            } else {
+              throw new Error(`Got "${responseText}", expected "${answer.trim()}" for the question "${question}"`);
+            }
           }
         }
       })(),
