@@ -4,7 +4,7 @@ const DeveloperPreviewSample = require("./developer-preview-sample.js");
 class TextGeneration extends DeveloperPreviewSample {
   constructor(config) {
     super(config, "text-generation");
-    this.config.timeout *= 3;
+    this.timeoutMultiplier = 3;
   }
 
   async run(page, backend, dataType, model) {
