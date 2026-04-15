@@ -75,7 +75,7 @@ function getBrowserPath(config) {
   return { browserPath, userDataDir };
 }
 
-async function launchBrowser(config) {
+async function launchBrowser(config, timeoutMultiplier = 1) {
   const { browserPath, userDataDir } = getBrowserPath(config);
   return await puppeteer.launch({
     headless: config.headless,
@@ -83,7 +83,7 @@ async function launchBrowser(config) {
     args: getBrowserArgs(config),
     executablePath: browserPath,
     ignoreHTTPSErrors: true,
-    protocolTimeout: config.timeout,
+    protocolTimeout: config.timeout * timeoutMultiplier,
     userDataDir
   });
 }

@@ -6,7 +6,7 @@ class StableDiffusion15 extends DeveloperPreviewSample {
   constructor(config) {
     super(config, "stable-diffusion-1-5");
     this.recordMemory = true;
-    this.config.timeout *= 3;
+    this.timeoutMultiplier = 3;
   }
 
   async run(page, backend, dataType, model) {

@@ -12,6 +12,7 @@ class BaseSample {
     this.source = source;
     this.sample = sample;
     this.sampleConfig = this.config[this.source][this.sample];
+    this.timeoutMultiplier = 1;
   }
 
   /**
@@ -70,9 +71,9 @@ class BaseSample {
     let page = null;
     let result = {};
     try {
-      browser = await util.launchBrowser(this.config);
+      browser = await util.launchBrowser(this.config, this.timeoutMultiplier);
       page = (await browser.pages())[0];
-      page.setDefaultTimeout(this.config.timeout);
+      page.setDefaultTimeout(this.config.timeout * this.timeoutMultiplier);
 
       await this.navigate(page, backend, model);
 
