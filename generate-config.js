@@ -1,6 +1,6 @@
 const fs = require("fs");
 const { program, Option } = require("commander");
-const { getNPUInfo } = require("./src/utils/util");
+const { getNPUInfo, getGPUInfo } = require("./src/utils/util");
 
 function filterSamplesWithDevices(config, devices) {
   const result = JSON.parse(JSON.stringify(config));
@@ -318,13 +318,12 @@ program
   )
   .addOption(
     new Option("-e, --backend <backend>", "The backend to use")
-      .choices(["ort", "tflite", "openvino-plugin"])
+      .choices(["ort", "tflite", "openvino-plugin", "webgpu"])
       .default("ort")
   )
   .option(
     "-p, --onnxruntime-providers-path <path>",
-    "The ONNX Runtime plugin and OpenVINO EP path",
-    "C:\\Program Files\\ort-ov-plugin-for-sample-test"
+    'The ONNX Runtime library path (default: "C:\\Program Files\\ort-ov-plugin-for-sample-test" for openvino-plugin, "C:\\Program Files\\Onnxruntime-WebGPU-daily" for webgpu)'
   )
   .option("-o, --output <path>", "The output config file path", "config.json")
   .action(async ({ devices, browser, backend, onnxruntimeProvidersPath, output }) => {
@@ -338,13 +337,17 @@ program
       console.warn("NPU is set but not available on this device. Removing npu from devices.");
       devices.splice(devices.indexOf("npu"), 1);
     }
+    if (backend === "webgpu" && (devices.length !== 1 || devices[0] !== "gpu")) {
+      console.warn(`webgpu backend only supports gpu device. Adjusting devices from [${devices}] to [gpu].`);
+      devices = ["gpu"];
+    }
 
     const config = { backend, browser, ...filterSamplesWithDevices(ORIGINAL_CONFIG, devices) };
+    const enableWebNNOrt = "--enable-features=WebMachineLearningNeuralNetwork,WebNNOnnxRuntime";
+    const allowThirdPartyModules = "--allow-third-party-modules";
+    const dontDisableWebNNNPU = "--disable_webnn_for_npu=0";
     if (backend === "ort") {
-      config.browserArgs.push(
-        "--enable-features=WebMachineLearningNeuralNetwork,WebNNOnnxRuntime",
-        "--disable_webnn_for_npu=0"
-      );
+      config.browserArgs.push(enableWebNNOrt, dontDisableWebNNNPU);
     } else if (backend === "tflite") {
       config.browserArgs.push(
         "--enable-features=WebMachineLearningNeuralNetwork",
@@ -369,13 +372,27 @@ program
         }
       }
     } else if (backend === "openvino-plugin") {
+      onnxruntimeProvidersPath ??= "C:\\Program Files\\ort-ov-plugin-for-sample-test";
       console.log(`Using ONNX Runtime and OpenVINO EP path: ${onnxruntimeProvidersPath}`);
       config.browserArgs.push(
-        "--enable-features=WebNNOnnxRuntime,WebMachineLearningNeuralNetwork",
+        enableWebNNOrt,
         `--webnn-ort-library-path-for-testing=${onnxruntimeProvidersPath}`,
         `--webnn-ort-ep-library-path-for-testing=OpenVINOExecutionProvider?${onnxruntimeProvidersPath}\\onnxruntime_providers_openvino_plugin.dll`,
-        "--allow-third-party-modules",
-        "--disable_webnn_for_npu=0"
+        allowThirdPartyModules,
+        dontDisableWebNNNPU
+      );
+    } else if (backend === "webgpu") {
+      onnxruntimeProvidersPath ??= "C:\\Program Files\\Onnxruntime-WebGPU-daily";
+      const gpuInfo = getGPUInfo();
+      if (!gpuInfo?.gpuVendorId || !gpuInfo?.gpuDeviceId) {
+        console.error("Failed to get GPU vendor/device IDs for webgpu backend.");
+        return;
+      }
+      config.browserArgs.push(
+        enableWebNNOrt,
+        `--webnn-ort-ep-device=WebGpuExecutionProvider,0x${gpuInfo.gpuVendorId},0x${gpuInfo.gpuDeviceId}`,
+        `--webnn-ort-library-path-for-testing=${onnxruntimeProvidersPath}`,
+        allowThirdPartyModules
       );
     }
 

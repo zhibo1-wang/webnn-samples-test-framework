@@ -94,45 +94,8 @@ async function getDeviceInfo(config) {
   // GPU
   try {
     if (deviceInfo.platform === "win32") {
-      const info = execSync(
-        `powershell -Command "Get-CimInstance -ClassName Win32_VideoController | Select-Object Name,DriverVersion,Status,PNPDeviceID | ConvertTo-Json"`
-      )
-        .toString()
-        .trim();
-      const gpuInfo = JSON.parse(info);
-      if (gpuInfo.length > 1) {
-        for (let i = 0; i < gpuInfo.length; i++) {
-          let match;
-          deviceInfo["gpuName"] = gpuInfo[i]["Name"];
-          if (deviceInfo["gpuName"].match("Microsoft")) {
-            continue;
-          }
-          deviceInfo["gpuDriverVersion"] = gpuInfo[i]["DriverVersion"];
-
-          match = gpuInfo[i]["PNPDeviceID"].match(".*DEV_(.{4})");
-          deviceInfo["gpuDeviceId"] = match[1].toUpperCase();
-
-          match = gpuInfo[i]["PNPDeviceID"].match(".*VEN_(.{4})");
-          deviceInfo["gpuVendorId"] = match[1].toUpperCase();
-
-          match = gpuInfo[i]["Status"];
-          if (match) {
-            if (match === "OK") {
-              break;
-            }
-          }
-        }
-      } else {
-        let match;
-        deviceInfo["gpuName"] = gpuInfo["Name"];
-        deviceInfo["gpuDriverVersion"] = gpuInfo["DriverVersion"];
-
-        match = gpuInfo["PNPDeviceID"].match(".*DEV_(.{4})");
-        deviceInfo["gpuDeviceId"] = match[1].toUpperCase();
-
-        match = gpuInfo["PNPDeviceID"].match(".*VEN_(.{4})");
-        deviceInfo["gpuVendorId"] = match[1].toUpperCase();
-      }
+      const gpuInfo = getGPUInfo();
+      if (gpuInfo) Object.assign(deviceInfo, gpuInfo);
     } else if (deviceInfo.platform === "darwin") {
       // macOS command
       const info = execSync("system_profiler SPDisplaysDataType").toString().trim();
@@ -168,7 +131,32 @@ async function getDeviceInfo(config) {
   return deviceInfo;
 }
 
+function getGPUInfo() {
+  if (process.platform !== "win32") return null;
+  try {
+    const info = execSync(
+      `powershell -Command "Get-CimInstance -ClassName Win32_VideoController | Select-Object Name,DriverVersion,Status,PNPDeviceID | ConvertTo-Json"`
+    )
+      .toString()
+      .trim();
+    const gpuList = [].concat(JSON.parse(info));
+    const gpu = gpuList.find((g) => !g.Name.match("Microsoft") && g.Status === "OK") ?? gpuList[0];
+    const vendorId = gpu.PNPDeviceID.match(/VEN_(\w{4})/)?.[1]?.toUpperCase();
+    const deviceId = gpu.PNPDeviceID.match(/DEV_(\w{4})/)?.[1]?.toUpperCase();
+    return {
+      gpuName: gpu.Name,
+      gpuDriverVersion: gpu.DriverVersion,
+      gpuVendorId: vendorId,
+      gpuDeviceId: deviceId
+    };
+  } catch (error) {
+    console.error(`Error getting GPU info: ${error}`);
+  }
+  return null;
+}
+
 module.exports = {
   getNPUInfo,
+  getGPUInfo,
   getDeviceInfo
 };
