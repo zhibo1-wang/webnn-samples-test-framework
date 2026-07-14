@@ -74,9 +74,10 @@ program
   .option("-c --config <path>", "Specify the config file path", "config.json")
   .option("-f, --filters [filter...]", "Specify the specific single sample test")
   .option("-b --browser-dir <path>", "Specify browser 'Application' folder path")
-  .option("-d --user-data-dir <path>", "Specify browser 'User Data' folder path");
+  .option("-d --user-data-dir <path>", "Specify browser 'User Data' folder path")
+  .option("-a, --browser-args <args...>", "Additional browser arguments");
 
-program.action(async ({ config: configPath, filters, browserDir, userDataDir }) => {
+program.action(async ({ config: configPath, filters, browserDir, userDataDir, browserArgs }) => {
   const config = require(path.resolve(process.cwd(), configPath));
   console.log(`Using config file: ${configPath}`);
 
@@ -103,6 +104,7 @@ program.action(async ({ config: configPath, filters, browserDir, userDataDir }) 
   util.killBrowserProcess(config);
   config.browserAppPath = browserDir ?? config.browserAppPath;
   config.browserUserDataPath = userDataDir ?? config.browserUserDataPath;
+  if (browserArgs) config.browserArgs.push(...browserArgs);
   // If the user data dir is not overridden by CLI, clean up the default temporary user data dir before the tests
   if (!(config.browserUserData && config.browserUserDataPath)) {
     const userDataDir = util.getBrowserPath(config).userDataDir;
