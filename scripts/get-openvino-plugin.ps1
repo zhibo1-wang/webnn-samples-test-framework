@@ -28,11 +28,22 @@ $latest = $matches | ForEach-Object {
 } | Sort-Object Date -Descending | Select-Object -First 1
 
 $folderName = $latest.Folder.TrimEnd('/')
-$sevenZipUrl = ($baseUrl.TrimEnd('/') + '/' + $folderName + '/TestTools-OV-Latest-Release-x64.7z')
+$folderUrl = $baseUrl.TrimEnd('/') + '/' + $folderName
 Write-Host "Latest folder found: $folderName    timestamp: $($latest.Date)"
 
+# Prefer TestTools-Release-x64.7z, fall back to TestTools-OV-Latest-Release-x64.7z
+$archiveName = "TestTools-Release-x64.7z"
+$sevenZipUrl = "$folderUrl/$archiveName"
+try {
+    Invoke-WebRequest -Uri $sevenZipUrl -Method Head -UseBasicParsing -TimeoutSec 10 | Out-Null
+} catch {
+    Write-Host "$archiveName not found, falling back to TestTools-OV-Latest-Release-x64.7z"
+    $archiveName = "TestTools-OV-Latest-Release-x64.7z"
+    $sevenZipUrl = "$folderUrl/$archiveName"
+}
+
 # Download the 7z archive
-$zipTmp = Join-Path $env:TEMP "TestTools-OV-Latest-Release-x64.7z"
+$zipTmp = Join-Path $env:TEMP $archiveName
 $tempStage = Join-Path $env:TEMP "ort_ov_stage"
 Write-Host "Downloading $sevenZipUrl to $zipTmp ..."
 Invoke-WebRequest -Uri $sevenZipUrl -OutFile $zipTmp -UseBasicParsing -TimeoutSec 180
