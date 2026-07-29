@@ -30,10 +30,6 @@ class NotepadTest extends BaseSample {
     console.log("Test Results: ", pageResults);
     return pageResults;
   }
-
-  async getAdditionalErrorMsg(page) {
-    return await util.getAlertWarning(page, pageElement.alertWarning);
-  }
 }
 
 async function notepadTest({ config, backend, dataType, model } = {}) {
