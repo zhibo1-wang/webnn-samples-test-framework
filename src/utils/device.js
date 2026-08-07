@@ -35,7 +35,16 @@ async function getDeviceInfo(config) {
     developerPreviewUrl: config.developerPreviewBasicUrl,
     backend: config.backend,
     browser: config.browser,
-    browserArgs: config.browserArgs
+    browserArgs: config.browserArgs.map((arg) => {
+      if (!arg.includes(" ")) return arg;
+      const eqIndex = arg.indexOf("=");
+      if (eqIndex !== -1 && arg.startsWith("--")) {
+        const key = arg.substring(0, eqIndex + 1);
+        const value = arg.substring(eqIndex + 1);
+        return value.includes(" ") ? `${key}"${value}"` : arg;
+      }
+      return `"${arg}"`;
+    })
   };
   const { browserPath, userDataDir } = getBrowserPath(config);
   deviceInfo["browserPath"] = browserPath;
