@@ -24,7 +24,7 @@ class StableDiffusionTurbo extends DeveloperPreviewSample {
   constructor(config) {
     super(config, "stable-diffusion-turbo");
     this.recordMemory = true;
-    this.config.timeout *= 3;
+    this.timeoutMultiplier = 3;
   }
 
   async run(page, backend, dataType, model) {
