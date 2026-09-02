@@ -23,12 +23,12 @@ class CodeEditorTest extends WebNNSample {
         errorMsg = `${errorMsg !== "" ? errorMsg + "\n " : ""}${example.name}: ${actualValue}`;
       }
     }
-    return errorMsg;
+    return { testResults: errorMsg === "" ? "pass" : "fail", error: errorMsg };
   }
 }
 
 async function codeEditorTest({ config, backend, dataType, model } = {}) {
-  const test = new CodeEditorTest({ config });
+  const test = new CodeEditorTest(config);
   return await test.execute(backend, dataType, model);
 }
 
