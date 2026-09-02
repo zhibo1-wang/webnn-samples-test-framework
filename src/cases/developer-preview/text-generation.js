@@ -12,24 +12,34 @@ class TextGeneration extends DeveloperPreviewSample {
       ttft: [],
       tps: []
     };
+    const ttftSelector = '.performance-data[title="Time to first token"] .tokens-per-second-performance-data';
+    const tpsSelector = '.performance-data[title="tokens per second"] .tokens-per-second-performance-data';
 
     await Promise.race([
       (async () => {
         await util.waitForElementEnabled(page, "#send-button");
         for (const { question, answer } of this.sampleConfig.cases) {
-          // It must be such a system prompt to make it function normally.
-          await page.type("#user-input", "You are a helpful AI assistant. " + question);
+          // Drop the previous case's performance data so the wait below cannot match a stale value.
+          await page.evaluate(() => {
+            const indicator = document.querySelector("#performance-indicator");
+            if (indicator) indicator.innerHTML = "";
+          });
+          // The demo already injects the "You are a helpful AI assistant." system
+          // prompt for phi4mini (main.js MODELS.phi4mini.system_content). Repeating
+          // it inside the user message duplicates the instruction and can derail
+          // the model into an unrelated, runaway continuation instead of a short
+          // answer (verified: this is what caused phi4mini responses to ramble past
+          // the max_length budget instead of terminating on EOS).
+          await page.type("#user-input", question);
           await page.click("#send-button");
           await util.waitForElementEnabled(page, "#send-button");
 
-          const timeToFirstToken = await page.$eval(
-            '.performance-data[title="Time to first token"] .tokens-per-second-performance-data',
-            (el) => el.textContent.trim()
-          );
-          const tokensPerSecond = await page.$eval(
-            '.performance-data[title="tokens per second"] .tokens-per-second-performance-data',
-            (el) => el.textContent.trim()
-          );
+          // The page renders the performance data at the end of the generation, which can land
+          // slightly after the send button is re-enabled, so wait for it instead of reading it directly.
+          await page.waitForSelector(ttftSelector);
+          const timeToFirstToken = await page.$eval(ttftSelector, (el) => el.textContent.trim());
+          await page.waitForSelector(tpsSelector);
+          const tokensPerSecond = await page.$eval(tpsSelector, (el) => el.textContent.trim());
           result.ttft.push(util.formatTimeResult(timeToFirstToken));
           result.tps.push(util.formatTimeResult(tokensPerSecond));
 
