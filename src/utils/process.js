@@ -76,7 +76,7 @@ function getRendererProcessInfo(browserProcess) {
     );
     let rendererProcesses = JSON.parse(stdout)
       .filter(({ CommandLine }) => {
-        return CommandLine.includes("--type=renderer") && !CommandLine.includes("--extension-process");
+        return CommandLine?.includes("--type=renderer") && !CommandLine.includes("--extension-process");
       })
       .map(({ ProcessId }) => ProcessId);
     if (rendererProcesses.length === 0) {
