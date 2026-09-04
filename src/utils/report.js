@@ -139,9 +139,11 @@ async function report(results) {
 async function scpUpload(file) {
   let target = path.posix.join(env.scp.target, env.hostname || os.hostname());
   let [host, dir] = target.split(":");
+  // BatchMode makes ssh/scp fail instead of blocking on a password prompt when key auth is unavailable.
+  const sshOptions = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10"];
   try {
-    childProcess.spawnSync("ssh", [host, "mkdir", "-p", dir]);
-    childProcess.spawnSync("scp", [file, target]);
+    childProcess.spawnSync("ssh", [...sshOptions, host, "mkdir", "-p", dir]);
+    childProcess.spawnSync("scp", [...sshOptions, file, target]);
   } catch (error) {
     console.log(`error occur during scp result to server: ${error.toString()}`);
   }
