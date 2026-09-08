@@ -140,11 +140,15 @@ program.action(async ({ config: configPath, filters, browserDir, userDataDir }) 
     }
   }
 
-  const jsonPath = await util.saveJsonFile(results);
+  const configLabel = util.getConfigLabel(configPath);
+  const jsonPath = await util.saveJsonFile(results, configLabel);
   // Copy the test results JSON file into `trends/data` in both `debug` and `production` modes.
   // In `debug` mode, the `jsonPath` includes `minute` information, which is unnecessary
   // for `trends` since it only compares and displays daily results.
-  util.copyFile(jsonPath, path.join(__dirname, "..", "trends", "data", require("os").hostname()), {
+  // Non-default configs get their own `<hostname>-<configLabel>` bucket so running several
+  // configs on the same host on the same day doesn't overwrite each other's daily results.
+  const trendsHost = configLabel ? `${require("os").hostname()}-${configLabel}` : require("os").hostname();
+  util.copyFile(jsonPath, path.join(__dirname, "..", "trends", "data", trendsHost), {
     targetName: path.basename(jsonPath).substring(0, 8) + ".json"
   });
 
@@ -154,7 +158,7 @@ program.action(async ({ config: configPath, filters, browserDir, userDataDir }) 
 
   if (env.env === "production") {
     await report(results);
-    await scpUpload(jsonPath);
+    await scpUpload(jsonPath, configLabel);
   }
 });
 
