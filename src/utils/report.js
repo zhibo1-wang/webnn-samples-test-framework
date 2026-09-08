@@ -136,9 +136,12 @@ async function report(results) {
   }
 }
 
-async function scpUpload(file) {
-  let target = path.posix.join(env.scp.target, env.hostname || os.hostname());
-  let [host, dir] = target.split(":");
+async function scpUpload(file, configLabel = "") {
+  const hostDir = (env.hostname || os.hostname()) + (configLabel ? `-${configLabel}` : "");
+  // The trends page only reads `<date>.json`, so drop the time/config-label parts of the file name.
+  const targetDir = path.posix.join(env.scp.target, hostDir);
+  const target = path.posix.join(targetDir, path.basename(file).substring(0, 8) + ".json");
+  let [host, dir] = targetDir.split(":");
   // BatchMode makes ssh/scp fail instead of blocking on a password prompt when key auth is unavailable.
   const sshOptions = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10"];
   try {

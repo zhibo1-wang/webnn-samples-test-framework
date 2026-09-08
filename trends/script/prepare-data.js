@@ -4,12 +4,13 @@ const os = require("os");
 
 const hostname = os.hostname();
 const sourceDir = path.join(__dirname, `../../out/`);
-const destinationDir = path.join(__dirname, `../data/${hostname}/`);
+const dataRootDir = path.join(__dirname, `../data/`);
 
-// Create the destination directory if it does not exist
-if (!fs.existsSync(destinationDir)) {
-  fs.mkdirSync(destinationDir, { recursive: true });
-}
+// Result file names are `<date>[<HHmm>][-<configLabel>].json` (see src/utils/fs.js saveJsonFile).
+// Group by configLabel so each config gets its own `<hostname>[-<configLabel>]` bucket, matching
+// the trends copy logic in src/main.js and avoiding results from different configs on the same
+// day overwriting each other.
+const RESULT_FILE_PATTERN = /^\d{8}(?:\d{4})?(?:-(.+))?\.json$/;
 
 if (!fs.existsSync(sourceDir)) {
   console.warn(`The directory ${sourceDir} does not exist.`);
@@ -31,30 +32,40 @@ fs.readdir(sourceDir, (err, dates) => {
           return;
         }
 
-        // Find the latest file for the current date directory
-        files = files.filter((file) => path.extname(file) === ".json");
-        let latestFile = files.reduce((latest, file) => {
-          const filePath = path.join(datePath, file);
-          const fileStat = fs.statSync(filePath);
-          if (!latest || fileStat.mtime > latest.mtime) {
-            return { file, mtime: fileStat.mtime };
-          }
-          return latest;
-        }, null);
+        // Group files by configLabel, then keep only the latest file per label.
+        const latestByLabel = new Map();
+        files
+          .filter((file) => path.extname(file) === ".json")
+          .forEach((file) => {
+            const match = file.match(RESULT_FILE_PATTERN);
+            if (!match) return;
+            const label = match[1] ?? "";
+            const filePath = path.join(datePath, file);
+            const mtime = fs.statSync(filePath).mtime;
+            const current = latestByLabel.get(label);
+            if (!current || mtime > current.mtime) {
+              latestByLabel.set(label, { file, mtime });
+            }
+          });
 
-        if (latestFile) {
-          const sourceFile = path.join(datePath, latestFile.file);
-          const newFileName = latestFile.file.substring(0, 8) + ".json";
+        latestByLabel.forEach(({ file }, label) => {
+          const destinationDir = path.join(dataRootDir, label ? `${hostname}-${label}` : hostname);
+          if (!fs.existsSync(destinationDir)) {
+            fs.mkdirSync(destinationDir, { recursive: true });
+          }
+
+          const sourceFile = path.join(datePath, file);
+          const newFileName = file.substring(0, 8) + ".json";
           const destinationFile = path.join(destinationDir, newFileName);
 
           fs.copyFile(sourceFile, destinationFile, (err) => {
             if (err) {
-              console.error(`Error copying file ${latestFile.file}: ${err}`);
+              console.error(`Error copying file ${file}: ${err}`);
             } else {
-              console.log(`Copied ${latestFile.file} to ${destinationDir}`);
+              console.log(`Copied ${file} to ${destinationFile}`);
             }
           });
-        }
+        });
       });
     }
   });
