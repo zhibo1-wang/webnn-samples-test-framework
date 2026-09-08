@@ -14,11 +14,12 @@ function ensureDir(relativePath) {
 const outDir = path.join(path.resolve(__dirname), "../../out").replace(/\\/g, "/");
 ensureDir(outDir);
 
-async function saveJsonFile(data) {
+async function saveJsonFile(data, configLabel = "") {
   const jsonData = JSON.stringify(data);
   const formattedJsonData = await prettier.format(jsonData, { parser: "json" });
   const timestamp = getTimestamp();
-  const fileName = env.env === "production" ? getTimestamp() : getTimestamp(true);
+  const suffix = configLabel ? `-${configLabel}` : "";
+  const fileName = (env.env === "production" ? getTimestamp() : getTimestamp(true)) + suffix;
   const directoryPath = `${outDir}/${timestamp}`;
   ensureDir(directoryPath);
   const filePath = `${directoryPath}/${fileName}.json`;
