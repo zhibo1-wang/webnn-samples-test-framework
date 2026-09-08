@@ -18,7 +18,7 @@
       <h3 style="display: inline-block; padding-right: 22px">WebNN Sample Test Trends</h3>
 
       <div>
-        <div v-if="deviceInfo" style="display: inline-block; margin-bottom: 11px; width: 100%">
+        <div style="display: inline-block; margin-bottom: 11px; width: 100%">
           <div style="display: flex; align-items: center; margin-bottom: 8px">
             <strong>Host:</strong>
             <select class="ui dropdown" @change="onSelectChange($event)" v-model="host" style="margin: 0 12px">
@@ -32,7 +32,10 @@
             <span>days</span>
           </div>
 
-          <div style="border: 1px solid #ddd; padding: 10px; border-radius: 6px; background: #f9f9f9">
+          <div
+            v-if="deviceInfo"
+            style="border: 1px solid #ddd; padding: 10px; border-radius: 6px; background: #f9f9f9"
+          >
             <div style="display: flex; flex-wrap: wrap; margin-left: 10px; line-height: 1.8">
               <div v-if="deviceInfo.browser" style="flex: 1; min-width: 500px">
                 <strong>Browser:</strong> {{ deviceInfo.browser }}
@@ -62,7 +65,8 @@
           {{ filter }}
         </div>
       </div>
-      <div v-if="!wholeData">Please wait...</div>
+      <div v-if="noData">No data found for host "{{ host }}" in the last {{ duration }} days.</div>
+      <div v-else-if="!wholeData">Please wait...</div>
       <table v-else class="ui table">
         <thead>
           <tr>
