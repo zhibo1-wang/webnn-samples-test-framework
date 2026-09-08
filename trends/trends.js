@@ -9,7 +9,9 @@ async function fetchHosts() {
   const directories = Array.from(doc.querySelectorAll("a"))
     .map((a) => a.getAttribute("href"))
     .filter((href) => href.endsWith("/") && !href.includes(".."))
-    .map((href) => href.slice(0, -1));
+    // Strip any leading "./" or "/" segments some static servers (e.g. http-server) include,
+    // keeping just the directory name itself.
+    .map((href) => href.split("/").filter((segment) => segment && segment !== ".").pop());
 
   return directories || [];
 }
@@ -71,7 +73,7 @@ function filterDataKeys(keys, whiteList, blackList) {
     .filter((key) => !blackList.some((f) => key.match(f.replace(/\*/g, ".*"))));
 }
 
-const whiteList = ["deviceInfo/*Version", "samples/*", "developerPreview/*"];
+const whiteList = ["deviceInfo/*Version", "samples/*", "developer-preview/*"];
 const blackList = ["error*", "deviceInfo/*Url"];
 const alias = {
   "deviceInfo/chromeVersion": "Chrome version",
@@ -81,41 +83,62 @@ const alias = {
 };
 const filters = {
   samples: "samples/*",
-  developerPreview: "developerPreview/*",
+  "developer-preview": "developer-preview/*",
   cpu: "*/cpu/*",
   gpu: "*/gpu/*",
+  npu: "*/npu/*",
   fp32: "*/fp32/*",
   fp16: "*/fp16/*",
-  inference: "*/inferenceTime|*/buildTime|*computeTime|*processTime|*first|*best|*average|*median",
-  memory: "*/memory*",
-  imageClassification: "imageClassification/*",
-  fastStyleTransfer: "fastStyleTransfer/*",
-  objectDetection: "objectDetection/*",
-  semanticSegmentation: "semanticSegmentation/*",
-  faceRecognition: "faceRecognition/*",
-  facialLandmarkDetection: "facialLandmarkDetection/*",
-  handwrittenDigitsClassification: "handwrittenDigitsClassification/*",
-  noiseSuppression: "noiseSuppression*",
-  switchSample: "switch-sample/*",
-  stableDiffusion15: "stableDiffusion15/*",
-  stableDiffusionTurbo: "stableDiffusionTurbo/*",
-  segmentAnything: "segmentAnything/*",
-  whisperBase: "whisperBase/*"
+  inference:
+    "*/inferenceTime|*/buildTime|*computeTime|*processTime|*first|*best|*average|*median|*loadTime|*warmupTime|*throughput|*tokensPerSecond",
+  memory: "*Memory*",
+  "image-classification": "image-classification/*",
+  "image-classification-repeat-inference": "image-classification-repeat-inference/*",
+  "fast-style-transfer": "fast-style-transfer/*",
+  "object-detection": "object-detection/*",
+  "semantic-segmentation": "semantic-segmentation/*",
+  "selfie-segmentation": "selfie-segmentation/*",
+  "face-recognition": "face-recognition/*",
+  "facial-landmark-detection": "facial-landmark-detection/*",
+  "handwritten-digits-classification": "handwritten-digits-classification/*",
+  "noise-suppression": "noise-suppression*",
+  "code-editor": "code-editor/*",
+  notepad: "notepad/*",
+  "switch-sample": "switch-sample/*",
+  "switch-backend": "switch-backend/*",
+  "stable-diffusion-1-5": "stable-diffusion-1-5/*",
+  "stable-diffusion-turbo": "stable-diffusion-turbo/*",
+  "stable-diffusion-xl-turbo": "stable-diffusion-xl-turbo/*",
+  "segment-anything": "segment-anything/*",
+  "whisper-base": "whisper-base/*",
+  "text-generation": "text-generation/*"
 };
 const filterKeys = [
-  ["samples", "developerPreview", "cpu", "gpu", "fp32", "fp16", "inference", "memory"],
+  ["samples", "developer-preview", "cpu", "gpu", "npu", "fp32", "fp16", "inference", "memory"],
   [
-    "imageClassification",
-    "fastStyleTransfer",
-    "objectDetection",
-    "semanticSegmentation",
-    "faceRecognition",
-    "facialLandmarkDetection",
-    "handwrittenDigitsClassification",
-    "noiseSuppression",
-    "switchSample"
+    "image-classification",
+    "image-classification-repeat-inference",
+    "fast-style-transfer",
+    "object-detection",
+    "semantic-segmentation",
+    "selfie-segmentation",
+    "face-recognition",
+    "facial-landmark-detection",
+    "handwritten-digits-classification",
+    "noise-suppression",
+    "code-editor",
+    "notepad",
+    "switch-sample",
+    "switch-backend"
   ],
-  ["stableDiffusion15", "stableDiffusionTurbo", "segmentAnything", "whisperBase"]
+  [
+    "stable-diffusion-1-5",
+    "stable-diffusion-turbo",
+    "stable-diffusion-xl-turbo",
+    "segment-anything",
+    "whisper-base",
+    "text-generation"
+  ]
 ];
 
 Vue.createApp({
