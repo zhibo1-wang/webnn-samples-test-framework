@@ -121,6 +121,12 @@ const pageElements = {
     inferButton: "#infer-btn",
     inferResult: "#infer-result"
   },
+  "z-image-turbo": {
+    loadModelsButton: "#load",
+    generateImageButton: "#generate",
+    finalTime: "#final-time",
+    runTotal: "#runTotal"
+  },
   "image-classification": {
     alertWaring: "#info",
     gpu: "#webnn_gpu",
