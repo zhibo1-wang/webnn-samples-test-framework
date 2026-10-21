@@ -73,6 +73,25 @@ async function throwOnErrorLog(page) {
   );
 }
 
+// Like throwOnErrorLog, but also catches the "[Stage] failed, <reason>" lines that the newer demos log.
+async function throwOnFailedLog(page) {
+  await page.waitForFunction(
+    (selector) => {
+      const element = document.querySelector(selector);
+      if (!element) return false;
+      for (const line of element.innerText.split("\n")) {
+        if (line.includes("[Error]") || line.includes("] failed,")) {
+          throw Error(line.trim());
+        }
+      }
+      return false;
+    },
+    // It only watches the log, so it must not end the test by its own timeout.
+    { timeout: 0 },
+    "#log"
+  );
+}
+
 /**
  * Return a promise that rejects after the specified timeout.
  * Intended to be used with Promise.race() by the caller.
@@ -119,6 +138,7 @@ module.exports = {
   throwOnDevelopmentPreviewError,
   throwOnUncaughtException,
   throwOnErrorLog,
+  throwOnFailedLog,
   throwOnTimeout,
   waitForElementEnabled,
   clickElementIfEnabled

@@ -162,7 +162,7 @@
     {% endif %}
 {% endif %}
 
-{% if inferenceTimeResult != empty or firstAverageMedianBestResult != empty or tokenPerSecondResult != empty %}
+{% if inferenceTimeResult != empty or firstAverageMedianBestResult != empty or tokenPerSecondResult != empty or realtimeResult != empty %}
     <h3>Performance</h3>
 {% endif %}
 {% if inferenceTimeResult != empty %}
@@ -235,6 +235,25 @@
                     <td>{{ item[1].tokensPerSecond }}</td>
                 </tr>
             {% endif %}
+        {% endfor %}
+        </tbody>
+    </table>
+    <br>
+{% endif %}
+{% if realtimeResult != empty %}
+    <table class="number-data">
+        <thead>
+        <tr>
+            <th>Demo</th>
+            <th>Realtime<br>Ratio (x)</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for item in realtimeResult %}
+            <tr>
+                <td>{{ item[0] }}</td>
+                <td>{{ item[1].realtime }}</td>
+            </tr>
         {% endfor %}
         </tbody>
     </table>
