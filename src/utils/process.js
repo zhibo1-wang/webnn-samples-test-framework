@@ -18,10 +18,16 @@ function processInfo(id) {
     return { error: "Given id is not a number" };
   }
   if (os.platform() === "win32") {
-    let result = childProcess.execSync(`Get-Process -Id ${id} | ConvertTo-Json -Compress -Depth 10`, {
-      shell: "powershell"
-    });
-    return JSON.parse(result);
+    try {
+      let result = childProcess.execSync(`Get-Process -Id ${id} | ConvertTo-Json -Compress -Depth 10`, {
+        shell: "powershell",
+        stdio: ["ignore", "pipe", "ignore"]
+      });
+      return JSON.parse(result);
+    } catch (e) {
+      // the process may exit between listing and querying it
+      return { error: "Process not found" };
+    }
   } else if (os.platform() === "linux") {
     const statusPath = `/proc/${id}/status`;
     if (!fs.existsSync(statusPath)) {
@@ -82,7 +88,11 @@ function getRendererProcessInfo(browserProcess) {
     if (rendererProcesses.length === 0) {
       return { error: `${browserProcess} is not running` };
     }
-    return rendererProcesses.map(processInfo).reduce((acc, obj) => {
+    const rendererInfos = rendererProcesses.map(processInfo).filter((info) => !info.error);
+    if (rendererInfos.length === 0) {
+      return { error: `${browserProcess} is not running` };
+    }
+    return rendererInfos.reduce((acc, obj) => {
       return acc.WorkingSet64 > obj.WorkingSet64 ? acc : obj;
     });
   } else if (os.platform() === "linux" || os.platform() === "darwin") {
