@@ -70,10 +70,13 @@ class BaseSample {
     let browser = null;
     let page = null;
     let result = {};
+    const pageErrors = [];
     try {
       browser = await util.launchBrowser(this.config, this.timeoutMultiplier);
       page = (await browser.pages())[0];
       page.setDefaultTimeout(this.config.timeout * this.timeoutMultiplier);
+      // run() only listens after the page has loaded, so keep the errors thrown during loading.
+      page.on("pageerror", (error) => pageErrors.push(error.message.split("\n")[0]));
 
       await this.navigate(page, backend, model);
 
@@ -88,6 +91,11 @@ class BaseSample {
       }
     } catch (error) {
       let errorMessage = error.message;
+      // The earlier page errors are usually the root cause of the failure, so put them first.
+      const rootCauses = [...new Set(pageErrors)].filter((message) => !errorMessage.includes(message));
+      if (rootCauses.length > 0) {
+        errorMessage = rootCauses.join("\n") + "\n" + errorMessage;
+      }
       try {
         const gpuLogMessages = await BaseSample.getGpuLogMessages(browser);
         const gpuCrashMessages = gpuLogMessages.filter((message) => message.includes("The GPU process crashed!"));
