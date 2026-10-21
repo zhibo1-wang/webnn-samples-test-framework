@@ -84,7 +84,8 @@ const ORIGINAL_CONFIG = {
     "whisper-base": "/demos/whisper-base/",
     "image-classification": "/demos/image-classification/",
     "text-generation": "/demos/text-generation/",
-    "stem-separator": "/demos/stem-separator/"
+    "stem-separator": "/demos/stem-separator/",
+    "z-image-turbo": "/demos/z-image-turbo/"
   },
   samples: {
     "face-recognition": {
@@ -298,6 +299,10 @@ const ORIGINAL_CONFIG = {
       tolerance: { relative: 0.15, absolute: 0.02 },
       gpu: { _: ["all"] },
       npu: { _: ["all"] }
+    },
+    "z-image-turbo": {
+      gpu: { _: ["all"] },
+      urlArgs: { provider: "webnn" }
     }
   }
 };
