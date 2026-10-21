@@ -114,7 +114,7 @@ const filters = {
   fp32: "*/fp32/*",
   fp16: "*/fp16/*",
   inference:
-    "*/inferenceTime|*/buildTime|*computeTime|*processTime|*first|*best|*average|*median|*loadTime|*warmupTime|*throughput|*tokensPerSecond",
+    "*/inferenceTime|*/buildTime|*computeTime|*processTime|*first|*best|*average|*median|*loadTime|*warmupTime|*throughput|*tokensPerSecond|*separationTime|*realtime",
   memory: "*Memory*",
   "image-classification": "image-classification/*",
   "image-classification-repeat-inference": "image-classification-repeat-inference/*",
@@ -135,7 +135,8 @@ const filters = {
   "stable-diffusion-xl-turbo": "stable-diffusion-xl-turbo/*",
   "segment-anything": "segment-anything/*",
   "whisper-base": "whisper-base/*",
-  "text-generation": "text-generation/*"
+  "text-generation": "text-generation/*",
+  "stem-separator": "stem-separator/*"
 };
 const filterKeys = [
   ["samples", "developer-preview", "cpu", "gpu", "npu", "fp32", "fp16", "inference", "memory"],
@@ -161,7 +162,8 @@ const filterKeys = [
     "stable-diffusion-xl-turbo",
     "segment-anything",
     "whisper-base",
-    "text-generation"
+    "text-generation",
+    "stem-separator"
   ]
 ];
 

@@ -114,6 +114,13 @@ const pageElements = {
     outputText: "#outputText",
     latency: "#latency"
   },
+  "stem-separator": {
+    loadButton: "#load-btn",
+    status: "#status",
+    audioInput: "#audio-file",
+    inferButton: "#infer-btn",
+    inferResult: "#infer-result"
+  },
   "image-classification": {
     alertWaring: "#info",
     gpu: "#webnn_gpu",
