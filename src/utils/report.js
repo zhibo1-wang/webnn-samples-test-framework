@@ -87,11 +87,12 @@ async function renderResultsAsHTML(data) {
     .renderFile("mail.liquid", {
       header: env.emailService.header,
       failed: failuresSamples.length,
-      total:
-        Object.entries(result).length +
-        Object.entries(tokenPerSecondResult).length +
-        Object.entries(realtimeResult).length +
-        failuresSamples.length,
+      total: new Set([
+        ...Object.keys(result),
+        ...Object.keys(tokenPerSecondResult),
+        ...Object.keys(realtimeResult),
+        ...Object.keys(aggregatedFailures)
+      ]).size,
       failedCases: Object.values(aggregatedFailures),
       deviceInfo: data.deviceInfo,
       sessionCreate: data.sessionCreate,
