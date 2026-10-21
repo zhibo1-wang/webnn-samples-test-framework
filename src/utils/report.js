@@ -13,6 +13,7 @@ async function renderResultsAsHTML(data) {
   const failuresSamples = [];
   const memoryConsumptionData = {};
   const tokenPerSecondResult = {};
+  const realtimeResult = {};
 
   function traverse(obj, path = [], result) {
     for (const key in obj) {
@@ -21,6 +22,11 @@ async function renderResultsAsHTML(data) {
         if (obj.error) {
           failuresSamples.push({ variable, error: obj[key] });
         }
+      }
+      // collect realtime ratio data
+      else if (key === "realtime" && !obj["error"]) {
+        const variable = path.join("-");
+        realtimeResult[variable] = { realtime: obj[key] };
       }
       // collect performance data
       else if (
@@ -81,7 +87,11 @@ async function renderResultsAsHTML(data) {
     .renderFile("mail.liquid", {
       header: env.emailService.header,
       failed: failuresSamples.length,
-      total: Object.entries(result).length + Object.entries(tokenPerSecondResult).length + failuresSamples.length,
+      total:
+        Object.entries(result).length +
+        Object.entries(tokenPerSecondResult).length +
+        Object.entries(realtimeResult).length +
+        failuresSamples.length,
       failedCases: Object.values(aggregatedFailures),
       deviceInfo: data.deviceInfo,
       sessionCreate: data.sessionCreate,
@@ -89,6 +99,7 @@ async function renderResultsAsHTML(data) {
       inferenceTimeResult,
       firstAverageMedianBestResult,
       tokenPerSecondResult,
+      realtimeResult,
       memory: memoryConsumptionData,
       footer: env.emailService.footer,
       signature: env.emailService.signature ?? "WebNN Team"

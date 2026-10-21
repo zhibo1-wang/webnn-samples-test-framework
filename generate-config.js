@@ -83,7 +83,8 @@ const ORIGINAL_CONFIG = {
     "segment-anything": "/demos/segment-anything/",
     "whisper-base": "/demos/whisper-base/",
     "image-classification": "/demos/image-classification/",
-    "text-generation": "/demos/text-generation/"
+    "text-generation": "/demos/text-generation/",
+    "stem-separator": "/demos/stem-separator/"
   },
   samples: {
     "face-recognition": {
@@ -290,6 +291,13 @@ const ORIGINAL_CONFIG = {
       cpu: { fp16: ["phi4mini"] },
       gpu: { fp16: ["phi4mini"] },
       npu: { fp16: ["phi4mini"] }
+    },
+    "stem-separator": {
+      examples: ["sapajou-second-goodbye", "oshova-our-fantasies"],
+      windowSeconds: 0.1,
+      tolerance: { relative: 0.15, absolute: 0.02 },
+      gpu: { _: ["all"] },
+      npu: { _: ["all"] }
     }
   }
 };
