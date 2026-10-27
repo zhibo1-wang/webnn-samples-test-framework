@@ -331,15 +331,25 @@ program
   )
   .addOption(
     new Option("-e, --backend <backend>", "The backend to use")
-      .choices(["ort", "tflite", "openvino-plugin", "webgpu"])
+      .choices(["ort", "tflite", "openvino-plugin", "webgpu", "ot", "ot-litert"])
       .default("ort")
   )
   .option(
-    "-p, --onnxruntime-providers-path <path>",
-    'The ONNX Runtime library path (default: "C:\\Program Files\\ort-ov-plugin-for-sample-test" for openvino-plugin, "C:\\Program Files\\Onnxruntime-WebGPU-daily" for webgpu)'
+    "--ovep-path <path>",
+    "The OpenVINO EP plugin dll path for ot",
+    "C:\\Program Files\\onnxruntime-ep-openvino-1.8.0\\onnxruntime_providers_openvino_plugin.dll"
+  )
+  .option(
+    "--webgpu-ep-path <path>",
+    "The ORT WebGPU EP dll path for ot",
+    "C:\\Program Files\\onnxruntime-webgpu-rel-0.5\\onnxruntime_providers_webgpu.dll"
+  )
+  .option(
+    "-p, --ort-path <path>",
+    'The ONNX Runtime library path (default: "C:\\Program Files\\ort-ov-plugin-for-sample-test" for openvino-plugin, "C:\\Program Files\\Onnxruntime-WebGPU-daily" for webgpu, "C:\\Program Files\\onnxruntime-win-x64-1.28.3\\lib" for ot/ot-litert)'
   )
   .option("-o, --output <path>", "The output config file path", "config.json")
-  .action(async ({ devices, browser, backend, onnxruntimeProvidersPath, output }) => {
+  .action(async ({ devices, browser, backend, ortPath, output, ovepPath, webgpuEpPath }) => {
     if (process.platform === "linux" && browser === "edge_canary") {
       console.error("edge_canary is not available on linux.");
       return;
@@ -359,6 +369,7 @@ program
     const enableWebNNOrt = "--enable-features=WebMachineLearningNeuralNetwork,WebNNOnnxRuntime";
     const allowThirdPartyModules = "--allow-third-party-modules";
     const dontDisableWebNNNPU = "--disable_webnn_for_npu=0";
+    const ignoreIhvEps = "--webnn-ort-ignore-ihv-eps";
     if (backend === "ort") {
       config.browserArgs.push(enableWebNNOrt, dontDisableWebNNNPU);
     } else if (backend === "tflite") {
@@ -366,7 +377,51 @@ program
         "--enable-features=WebMachineLearningNeuralNetwork",
         "--disable-features=WebNNDirectML,WebNNOnnxRuntime"
       );
+    } else if (backend === "openvino-plugin") {
+      ortPath ??= "C:\\Program Files\\ort-ov-plugin-for-sample-test";
+      console.log(`Using ONNX Runtime and OpenVINO EP path: ${ortPath}`);
+      config.browserArgs.push(
+        enableWebNNOrt,
+        `--webnn-ort-library-path-for-testing=${ortPath}`,
+        `--webnn-ort-ep-library-path-for-testing=OpenVINOExecutionProvider?${ortPath}\\onnxruntime_providers_openvino_plugin.dll`,
+        allowThirdPartyModules,
+        dontDisableWebNNNPU
+      );
+    } else if (backend === "webgpu") {
+      ortPath ??= "C:\\Program Files\\Onnxruntime-WebGPU-daily";
+      const gpuInfo = getGPUInfo();
+      if (!gpuInfo?.gpuVendorId || !gpuInfo?.gpuDeviceId) {
+        console.error("Failed to get GPU vendor/device IDs for webgpu backend.");
+        return;
+      }
+      config.browserArgs.push(
+        enableWebNNOrt,
+        `--webnn-ort-ep-device=WebGpuExecutionProvider,0x${gpuInfo.gpuVendorId},0x${gpuInfo.gpuDeviceId}`,
+        `--webnn-ort-library-path-for-testing=${ortPath}`,
+        allowThirdPartyModules
+      );
+    } else if (backend === "ot" || backend === "ot-litert") {
+      ortPath ??= "C:\\Program Files\\onnxruntime-win-x64-1.28.3\\lib";
+      config.browserArgs = [];
+      config.browserArgs.push(
+        "--enable-features=WebMachineLearningNeuralNetwork,WebNNOnnxRuntime,WebNNCompilerProcess,WebNNLiteRTGpuInRenderer"
+      );
+      if (backend === "ot") {
+        config.browserArgs.push(
+          `--webnn-ort-library-path-for-testing=${ortPath}`,
+          `--webnn-ort-ep-library-path-for-testing=OpenVINOExecutionProvider?${ovepPath},WebGpuExecutionProvider?${webgpuEpPath}`
+        );
+      } else {
+        config.browserArgs.push(
+          ignoreIhvEps,
+          `--webnn-ort-library-path-for-testing=${ortPath}`
+        );
+      }
+      config.browserArgs.push(allowThirdPartyModules);
+    }
 
+    // The LiteRT (tflite) based backends do not support these models on non-cpu devices
+    if (backend === "tflite" || backend === "ot-litert") {
       const tfliteUnsupportedModels = ["efficientNet", "resNet50V1"];
       const filterModels = (models) => models.filter((model) => !tfliteUnsupportedModels.includes(model));
       const nonCpuDevices = devices.filter((device) => device !== "cpu");
@@ -384,29 +439,6 @@ program
           }
         }
       }
-    } else if (backend === "openvino-plugin") {
-      onnxruntimeProvidersPath ??= "C:\\Program Files\\ort-ov-plugin-for-sample-test";
-      console.log(`Using ONNX Runtime and OpenVINO EP path: ${onnxruntimeProvidersPath}`);
-      config.browserArgs.push(
-        enableWebNNOrt,
-        `--webnn-ort-library-path-for-testing=${onnxruntimeProvidersPath}`,
-        `--webnn-ort-ep-library-path-for-testing=OpenVINOExecutionProvider?${onnxruntimeProvidersPath}\\onnxruntime_providers_openvino_plugin.dll`,
-        allowThirdPartyModules,
-        dontDisableWebNNNPU
-      );
-    } else if (backend === "webgpu") {
-      onnxruntimeProvidersPath ??= "C:\\Program Files\\Onnxruntime-WebGPU-daily";
-      const gpuInfo = getGPUInfo();
-      if (!gpuInfo?.gpuVendorId || !gpuInfo?.gpuDeviceId) {
-        console.error("Failed to get GPU vendor/device IDs for webgpu backend.");
-        return;
-      }
-      config.browserArgs.push(
-        enableWebNNOrt,
-        `--webnn-ort-ep-device=WebGpuExecutionProvider,0x${gpuInfo.gpuVendorId},0x${gpuInfo.gpuDeviceId}`,
-        `--webnn-ort-library-path-for-testing=${onnxruntimeProvidersPath}`,
-        allowThirdPartyModules
-      );
     }
 
     fs.writeFileSync(output, JSON.stringify(config, null, 2));

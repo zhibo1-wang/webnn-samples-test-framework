@@ -34,7 +34,10 @@ Generate config for webnn sample tests
 Options:
   -b, --browser <browser>     The browser to use (choices: "chrome_canary", "chrome_dev", "chrome_beta", "chrome_stable", "edge_canary", "edge_dev", "edge_beta", "edge_stable", default: "chrome_canary")
   -d, --devices <devices...>  The devices to use (choices: "cpu", "gpu", "npu", default: ["cpu","gpu","npu"])
-  -e, --backend <backend>     The backend to use (choices: "ort", "tflite", default: "ort")
+  -e, --backend <backend>     The backend to use (choices: "ort", "tflite", "openvino-plugin", "webgpu", "ot", "ot-litert", default: "ort")
+  -p, --ort-path <path>       The ONNX Runtime library path (backend-specific default)
+  --ovep-path <path>          The OpenVINO EP plugin dll path for ot
+  --webgpu-ep-path <path>     The ORT WebGPU EP dll path for ot
   -o, --output <path>         The output config file path (default: "config.json")
   -h, --help                  display help for command
 ```
