@@ -34,8 +34,9 @@ class TextGeneration extends DeveloperPreviewSample {
           const timeToFirstToken = await page.$eval(ttftSelector, (el) => el.textContent.trim());
           await page.waitForSelector(tpsSelector);
           const tokensPerSecond = await page.$eval(tpsSelector, (el) => el.textContent.trim());
-          result.ttft.push(util.formatTimeResult(timeToFirstToken));
-          result.tps.push(util.formatTimeResult(tokensPerSecond));
+          // Store numbers only, without units
+          result.ttft.push(parseFloat(timeToFirstToken));
+          result.tps.push(parseFloat(tokensPerSecond));
 
           const lastResponse = await page.$$(".response-message");
           let responseText = (
