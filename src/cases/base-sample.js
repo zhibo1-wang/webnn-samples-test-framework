@@ -77,18 +77,27 @@ class BaseSample {
       page.setDefaultTimeout(this.config.timeout * this.timeoutMultiplier);
       // run() only listens after the page has loaded, so keep the errors thrown during loading.
       page.on("pageerror", (error) => pageErrors.push(error.message.split("\n")[0]));
+      // A crashed renderer never settles some pending waits (e.g. those without timeout), so fail the case at once.
+      const rendererCrashed = new Promise((_, reject) => {
+        page.on("error", (error) => reject(new Error(`Renderer crashed: ${error.message}`)));
+      });
 
-      await this.navigate(page, backend, model);
+      await Promise.race([
+        (async () => {
+          await this.navigate(page, backend, model);
 
-      if (typeof this.beforeRun === "function") {
-        const before = await this.beforeRun(page);
-        if (before) result = { ...result, ...before };
-      }
-      result = { ...result, ...(await this.run(page, backend, dataType, model)) };
-      if (typeof this.afterRun === "function") {
-        const after = await this.afterRun(page);
-        if (after) result = { ...result, ...after };
-      }
+          if (typeof this.beforeRun === "function") {
+            const before = await this.beforeRun(page);
+            if (before) result = { ...result, ...before };
+          }
+          result = { ...result, ...(await this.run(page, backend, dataType, model)) };
+          if (typeof this.afterRun === "function") {
+            const after = await this.afterRun(page);
+            if (after) result = { ...result, ...after };
+          }
+        })(),
+        rendererCrashed
+      ]);
     } catch (error) {
       let errorMessage = error.message;
       // The earlier page errors are usually the root cause of the failure, so put them first.
