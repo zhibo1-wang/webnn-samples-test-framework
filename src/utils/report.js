@@ -28,6 +28,13 @@ async function renderResultsAsHTML(data) {
         const variable = path.join("-");
         realtimeResult[variable] = { realtime: obj[key] };
       }
+      // collect text generation data (arrays of numbers, one per question) into the tokens per second table
+      else if ((key === "ttft" || key === "tps") && Array.isArray(obj[key]) && !obj["error"]) {
+        if (key === "ttft") {
+          const variable = path.join("-");
+          tokenPerSecondResult[variable] = { ttft: obj.ttft.join(", "), tokensPerSecond: (obj.tps ?? []).join(", ") };
+        }
+      }
       // collect performance data
       else if (
         path.length > 2 &&
