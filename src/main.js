@@ -76,9 +76,10 @@ program
   .option("-f, --filters [filter...]", "Specify the specific single sample test")
   .option("-b --browser-dir <path>", "Specify browser 'Application' folder path")
   .option("-d --user-data-dir <path>", "Specify browser 'User Data' folder path")
-  .option("-a, --browser-args <args...>", "Additional browser arguments");
+  .option("-a, --browser-args <args...>", "Additional browser arguments")
+  .option("--allow-gpu-errors", "Keep testing even if chrome://gpu has WebNN errors (they are still reported)");
 
-program.action(async ({ config: configPath, filters, browserDir, userDataDir, browserArgs }) => {
+program.action(async ({ config: configPath, filters, browserDir, userDataDir, browserArgs, allowGpuErrors }) => {
   const config = require(path.resolve(process.cwd(), configPath));
   console.log(`Using config file: ${configPath}`);
 
@@ -122,7 +123,7 @@ program.action(async ({ config: configPath, filters, browserDir, userDataDir, br
   let failed = false;
   for (const [name, test] of Object.entries({ ortLibraryPath, sessionCreate })) {
     results[name] = await test({ config });
-    if (results[name].error) {
+    if (results[name].error && !(allowGpuErrors && name === "sessionCreate")) {
       failed = true;
     }
   }
