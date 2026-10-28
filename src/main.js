@@ -40,6 +40,7 @@ const parseFilter = (filter) => {
  */
 const expandFilter = (pattern, allFilters) => {
   if (!pattern.includes("*")) {
+    if (!allFilters.includes(pattern)) return null;
     const parsed = parseFilter(pattern);
     return parsed ? [parsed] : null;
   }
