@@ -7,7 +7,7 @@ const { env } = require("./env");
 function getBrowserArgs(config) {
   // puppeteer will manipulate the args, so we create a copy
   const browserArgs = [...config["browserArgs"]];
-  if (env.proxy.host) {
+  if (env.proxy?.host) {
     browserArgs.push(`--proxy-server=${env.proxy.host}:${env.proxy.port}`);
   }
   return browserArgs;
