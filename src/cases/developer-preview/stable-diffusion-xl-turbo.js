@@ -32,7 +32,7 @@ class StableDiffusionXlTurbo extends DeveloperPreviewSample {
             return element?.textContent.trim().match(/^\d+\.?\d*\s*ms$/);
           },
           {},
-          pageElement.totalData
+          pageElement.data4
         );
         await util.delay(1000);
       })(),
@@ -55,13 +55,19 @@ class StableDiffusionXlTurbo extends DeveloperPreviewSample {
       }
     }
 
-    const buildTime = [];
-    for (const modelName of ["textEncoder", "textEncoder2", "unet", "vae"]) {
-      buildTime.push(await page.$eval(pageElement[`${modelName}Create`], (el) => el.textContent));
+    // run1 is cold, run2 is the average of the warm runs (images 2-4)
+    const result = {};
+    for (const modelName of ["textEncoder", "textEncoder2", "unet", "vae", "safetyChecker"]) {
+      const runs = [];
+      for (let k = 1; k <= 4; k++) {
+        runs.push(await page.$eval(pageElement[`${modelName}Run${k}`], (el) => el.textContent));
+      }
+      result[modelName] = {
+        buildTime: await page.$eval(pageElement[`${modelName}Create`], (el) => el.textContent),
+        run1: Number(runs[0]).toFixed(2),
+        run2: util.calculateAverage(runs.slice(1))
+      };
     }
-    const inferenceTime = await page.$eval(pageElement.runTotal, (el) => el.textContent);
-
-    const result = { all: { buildTime, inferenceTime } };
     console.log(result);
     return result;
   }
