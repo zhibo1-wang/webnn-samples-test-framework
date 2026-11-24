@@ -129,6 +129,21 @@ async function clickElementIfEnabled(page, selector) {
       : `${selector} element is not clickable.`;
     throw new Error(errorMessage);
   }
+
+  // wait up to 15 seconds until the clicked button is lit (active), so the page has handled the click
+  // before the next one. Non-button elements have no lit state.
+  try {
+    await page.waitForFunction(
+      (selector) => {
+        const label = document.querySelector(selector).parentElement;
+        return !label.classList.contains("btn") || label.classList.contains("active");
+      },
+      { timeout: 15000 },
+      selector
+    );
+  } catch (error) {
+    throw new Error(`${selector} element is not active after click.`);
+  }
 }
 
 module.exports = {

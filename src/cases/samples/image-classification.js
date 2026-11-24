@@ -13,7 +13,6 @@ class ImageClassificationTest extends WebNNSample {
 
     for (const selector of elementsToClick) {
       await util.clickElementIfEnabled(page, selector);
-      await util.delay(1000);
     }
 
     await Promise.race([
