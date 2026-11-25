@@ -3,6 +3,7 @@ const path = require("path");
 const puppeteer = require("puppeteer");
 const { spawnSync } = require("child_process");
 const { env } = require("./env");
+const { delay } = require("./common");
 
 function getBrowserArgs(config) {
   // puppeteer will manipulate the args, so we create a copy
@@ -88,7 +89,7 @@ async function launchBrowser(config, timeoutMultiplier = 1) {
   });
 }
 
-function killBrowserProcess(config) {
+function killBrowserProcessOnce(config) {
   const platform = os.platform();
   const browserProcess = getBrowserProcess(config);
 
@@ -97,6 +98,39 @@ function killBrowserProcess(config) {
   } else if (platform === "linux" || platform === "darwin") {
     spawnSync("pkill", ["-f", browserProcess]);
   }
+}
+
+function isBrowserProcessRunning(config) {
+  const platform = os.platform();
+  const browserProcess = getBrowserProcess(config);
+
+  if (platform === "win32") {
+    const result = spawnSync("tasklist", ["/FI", `IMAGENAME eq ${browserProcess}`, "/NH"]);
+    return result.stdout.toString().toLowerCase().includes(browserProcess.toLowerCase());
+  } else {
+    const result = spawnSync("pgrep", ["-f", browserProcess]);
+    return result.status === 0;
+  }
+}
+
+/**
+ * Kill leftover browser processes and verify they're actually gone before returning.
+ * A crashed/OOM-killed browser leaves sandboxed child processes (GPU/renderer) behind that can
+ * reject termination for a few seconds while they're mid-teardown (access denied), even though
+ * the main process is already gone. Retrying for a few seconds avoids leaving zombies that would
+ * otherwise contend for GPU/memory with the next test case.
+ * @param {object} config
+ * @param {{ waitMs?: number, retryIntervalMs?: number }} [options]
+ * @returns {Promise<boolean>} true if no browser process remains
+ */
+async function killBrowserProcess(config, { waitMs = 15000, retryIntervalMs = 1000 } = {}) {
+  const deadline = Date.now() + waitMs;
+  do {
+    killBrowserProcessOnce(config);
+    if (!isBrowserProcessRunning(config)) return true;
+    await delay(retryIntervalMs);
+  } while (Date.now() < deadline);
+  return !isBrowserProcessRunning(config);
 }
 
 function getBrowserProcess(config) {

@@ -132,7 +132,13 @@ class BaseSample {
           } else {
             result.error = closeError.message;
           }
-          util.killBrowserProcess(this.config);
+        }
+        // browser.close() resolves without error even when the browser crashed/was OOM-killed, leaving
+        // sandboxed child processes (GPU/renderer) running. Always verify they're actually gone so they
+        // don't pile up and destabilize later cases.
+        const cleaned = await util.killBrowserProcess(this.config);
+        if (!cleaned) {
+          console.warn(`Could not fully clean up leftover ${util.getBrowserProcess(this.config)} processes`);
         }
       }
     }
