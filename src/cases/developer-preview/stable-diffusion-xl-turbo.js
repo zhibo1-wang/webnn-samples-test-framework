@@ -55,19 +55,13 @@ class StableDiffusionXlTurbo extends DeveloperPreviewSample {
       }
     }
 
-    // run1 is cold, run2 is the average of the warm runs (images 2-4)
-    const result = {};
-    for (const modelName of ["textEncoder", "textEncoder2", "unet", "vae", "safetyChecker"]) {
-      const runs = [];
-      for (let k = 1; k <= 4; k++) {
-        runs.push(await page.$eval(pageElement[`${modelName}Run${k}`], (el) => el.textContent));
-      }
-      result[modelName] = {
-        buildTime: await page.$eval(pageElement[`${modelName}Create`], (el) => el.textContent),
-        run1: Number(runs[0]).toFixed(2),
-        run2: util.calculateAverage(runs.slice(1))
-      };
+    // The per-model run times are not reliable with IO binding (UNet returns before the GPU finishes), so only
+    // the total time of generating an image is reported. run1 is cold, run2 is the average of the warm runs (images 2-4).
+    const runs = [];
+    for (let k = 1; k <= 4; k++) {
+      runs.push(await page.$eval(pageElement[`runTotal${k}`], (el) => el.textContent));
     }
+    const result = { total: { run1: Number(runs[0]).toFixed(2), run2: util.calculateAverage(runs.slice(1)) } };
     console.log(result);
     return result;
   }
