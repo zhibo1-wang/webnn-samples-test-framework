@@ -17,10 +17,15 @@ module.exports = async function ({ config }) {
     ]);
 
     let result = { modules: {} };
-    if (process.platform === "win32") {
+    if (process.platform === "win32" && config.backend !== "litert") {
       const gpuProcessInfo = processInfo.getGpuProcessInfo(util.getBrowserProcess(config));
       const modules = Object.fromEntries(gpuProcessInfo.Modules?.map((m) => [m.ModuleName, m]) ?? []);
-      for (const name of ["onnxruntime", "onnxruntime_providers_openvino_plugin", "openvino"]) {
+      for (const name of [
+        "onnxruntime",
+        "onnxruntime_providers_openvino_plugin",
+        "openvino",
+        "onnxruntime_providers_webgpu"
+      ]) {
         const module = modules[`${name}.dll`];
         if (module) {
           result.modules[name] = {

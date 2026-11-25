@@ -11,9 +11,15 @@ module.exports = async function ({ config }) {
         );
       }
     } else {
-      const match = arg.match(/--webnn-ort-ep-library-path-for-testing=.*\?(.*)/);
-      if (match && !fs.existsSync(match[1])) {
-        errors.push(`The specified file in ${arg} does not exist`);
+      const epMatch = arg.match(/--webnn-ort-ep-library-path-for-testing=(.*)/);
+      if (epMatch) {
+        // Format: EP1?path1,EP2?path2
+        for (const entry of epMatch[1].split(",")) {
+          const file = entry.slice(entry.indexOf("?") + 1);
+          if (!fs.existsSync(file)) {
+            errors.push(`The specified file "${file}" in ${arg} does not exist`);
+          }
+        }
       }
     }
   });

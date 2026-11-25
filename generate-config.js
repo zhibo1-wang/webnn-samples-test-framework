@@ -327,20 +327,29 @@ program
   .addOption(
     new Option("-d, --devices <devices...>", "The devices to use")
       .choices(["cpu", "gpu", "npu"])
-      .default(["cpu", "gpu", "npu"])
+      .default(["gpu", "npu"])
   )
   .addOption(
     new Option("-e, --backend <backend>", "The backend to use")
-      .choices(["ort", "tflite", "openvino-plugin"])
-      .default("ort")
+      .choices(["ot", "litert", "openvino-plugin"])
+      .default("ot")
   )
   .option(
-    "-p, --onnxruntime-providers-path <path>",
-    "The ONNX Runtime plugin and OpenVINO EP path",
+    "--ovep-path <path>",
+    "The OpenVINO EP plugin dll path for openvino-plugin (default: onnxruntime_providers_openvino_plugin.dll under --ort-path)"
+  )
+  .option(
+    "--webgpu-ep-path <path>",
+    "The ORT WebGPU EP dll path for openvino-plugin",
+    "C:\\Program Files\\onnxruntime-webgpu\\onnxruntime_providers_webgpu.dll"
+  )
+  .option(
+    "-p, --ort-path <path>",
+    "The ONNX Runtime library path for openvino-plugin",
     "C:\\Program Files\\ort-ov-plugin-for-sample-test"
   )
   .option("-o, --output <path>", "The output config file path", "config.json")
-  .action(async ({ devices, browser, backend, onnxruntimeProvidersPath, output }) => {
+  .action(async ({ devices, browser, backend, ortPath, output, ovepPath, webgpuEpPath }) => {
     if (process.platform === "linux" && browser === "edge_canary") {
       console.error("edge_canary is not available on linux.");
       return;
@@ -351,19 +360,33 @@ program
       console.warn("NPU is set but not available on this device. Removing npu from devices.");
       devices.splice(devices.indexOf("npu"), 1);
     }
+    if (backend === "litert" && (devices.length !== 1 || devices[0] !== "gpu")) {
+      console.warn(`litert backend only supports gpu device. Adjusting devices from [${devices}] to [gpu].`);
+      devices = ["gpu"];
+    }
 
     const config = { backend, browser, ...filterSamplesWithDevices(ORIGINAL_CONFIG, devices) };
-    if (backend === "ort") {
+    const enableWebNN = "--enable-features=WebMachineLearningNeuralNetwork";
+    if (backend === "ot") {
+      config.browserArgs = [enableWebNN];
+    } else if (backend === "litert") {
+      config.browserArgs = [
+        "--enable-features=WebMachineLearningNeuralNetwork,WebNNLiteRTGpuInRenderer",
+        "--disable-features=WebNNOnnxRuntime"
+      ];
+    } else if (backend === "openvino-plugin") {
+      ovepPath ??= `${ortPath}\\onnxruntime_providers_openvino_plugin.dll`;
+      console.log(`Using ONNX Runtime: ${ortPath}\nOpenVINO EP: ${ovepPath}\nWebGPU EP: ${webgpuEpPath}`);
       config.browserArgs.push(
-        "--enable-features=WebMachineLearningNeuralNetwork,WebNNOnnxRuntime",
-        "--disable_webnn_for_npu=0"
+        enableWebNN,
+        `--webnn-ort-library-path-for-testing=${ortPath}`,
+        `--webnn-ort-ep-library-path-for-testing=OpenVINOExecutionProvider?${ovepPath},WebGpuExecutionProvider?${webgpuEpPath}`,
+        "--allow-third-party-modules"
       );
-    } else if (backend === "tflite") {
-      config.browserArgs.push(
-        "--enable-features=WebMachineLearningNeuralNetwork",
-        "--disable-features=WebNNDirectML,WebNNOnnxRuntime"
-      );
+    }
 
+    // The LiteRT based backend does not support these models on non-cpu devices
+    if (backend === "litert") {
       const tfliteUnsupportedModels = ["efficientNet", "resNet50V1"];
       const filterModels = (models) => models.filter((model) => !tfliteUnsupportedModels.includes(model));
       const nonCpuDevices = devices.filter((device) => device !== "cpu");
@@ -381,15 +404,6 @@ program
           }
         }
       }
-    } else if (backend === "openvino-plugin") {
-      console.log(`Using ONNX Runtime and OpenVINO EP path: ${onnxruntimeProvidersPath}`);
-      config.browserArgs.push(
-        "--enable-features=WebNNOnnxRuntime,WebMachineLearningNeuralNetwork",
-        `--webnn-ort-library-path-for-testing=${onnxruntimeProvidersPath}`,
-        `--webnn-ort-ep-library-path-for-testing=OpenVINOExecutionProvider?${onnxruntimeProvidersPath}\\onnxruntime_providers_openvino_plugin.dll`,
-        "--allow-third-party-modules",
-        "--disable_webnn_for_npu=0"
-      );
     }
 
     fs.writeFileSync(output, JSON.stringify(config, null, 2));
