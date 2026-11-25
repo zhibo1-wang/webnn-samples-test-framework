@@ -15,7 +15,21 @@ class StableDiffusionXlTurbo extends DeveloperPreviewSample {
     await Promise.race([
       (async () => {
         await util.waitForElementEnabled(page, pageElement.loadModelsButton);
-        await page.click(pageElement.loadModelsButton);
+        // The page ignores clicks made shortly after it loads, so click again until loading has started.
+        for (let attempt = 1; ; attempt++) {
+          await page.click(pageElement.loadModelsButton);
+          try {
+            await page.waitForFunction(
+              (selector) => document.querySelector(selector).hasAttribute("disabled"),
+              { timeout: 5000 },
+              pageElement.loadModelsButton
+            );
+            break;
+          } catch (error) {
+            if (attempt >= 5)
+              throw new Error(`${pageElement.loadModelsButton} click had no effect after ${attempt} attempts`);
+          }
+        }
         await util.waitForElementEnabled(page, pageElement.generateImageButton);
       })(),
       util.throwOnUncaughtException(page)
