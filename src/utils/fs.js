@@ -1,7 +1,6 @@
 const fs = require("fs");
 const path = require("path");
 const prettier = require("prettier");
-const { env } = require("./env");
 const { getTimestamp } = require("./common");
 
 function ensureDir(relativePath) {
@@ -19,7 +18,7 @@ async function saveJsonFile(data, configLabel = "") {
   const formattedJsonData = await prettier.format(jsonData, { parser: "json" });
   const timestamp = getTimestamp();
   const suffix = configLabel ? `-${configLabel}` : "";
-  const fileName = (env.env === "production" ? getTimestamp() : getTimestamp(true)) + suffix;
+  const fileName = getTimestamp(true) + suffix;
   const directoryPath = `${outDir}/${timestamp}`;
   ensureDir(directoryPath);
   const filePath = `${directoryPath}/${fileName}.json`;
