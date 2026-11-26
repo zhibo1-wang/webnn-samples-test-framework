@@ -113,6 +113,16 @@ async function waitForElementEnabled(page, pageElement) {
 // click element if it is enabled, wait up to 3 seconds for enabled state
 async function clickElementIfEnabled(page, selector) {
   try {
+    // The page disables all buttons (clickDisabled) while its change handler is pending, e.g. querying the default
+    // layout which can take a long time on some devices. A click then does nothing, so wait for it to finish.
+    await page.waitForFunction(
+      (selector) => {
+        const el = document.querySelector(selector);
+        return el && el.parentElement && !el.parentElement.classList.contains("clickDisabled");
+      },
+      { timeout: 30000 },
+      selector
+    );
     await page.waitForFunction(
       (selector) => {
         const el = document.querySelector(selector);
