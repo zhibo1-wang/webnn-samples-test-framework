@@ -55,6 +55,30 @@ async function throwOnUncaughtException(page) {
   });
 }
 
+// A renderer killed by OOM emits no "error" event in Puppeteer, but stops answering evaluate().
+function watchResponsive(page, onDead, interval = 15000, maxMisses = 2) {
+  let misses = 0;
+  let checking = false;
+  const timer = setInterval(async () => {
+    if (checking) return;
+    checking = true;
+    const answered = await Promise.race([
+      page.evaluate("1").then(
+        () => true,
+        () => false
+      ),
+      new Promise((resolve) => setTimeout(resolve, interval, false))
+    ]);
+    checking = false;
+    misses = answered ? 0 : misses + 1;
+    if (misses >= maxMisses) {
+      clearInterval(timer);
+      onDead(new Error(`Page not responding for ${(interval * maxMisses) / 1000}s, renderer probably crashed (OOM)`));
+    }
+  }, interval);
+  return () => clearInterval(timer);
+}
+
 async function throwOnErrorLog(page) {
   await page.waitForFunction(
     (selector) => {
@@ -162,6 +186,7 @@ module.exports = {
   throwErrorOnElement,
   throwOnDevelopmentPreviewError,
   throwOnUncaughtException,
+  watchResponsive,
   throwOnErrorLog,
   throwOnFailedLog,
   throwOnTimeout,

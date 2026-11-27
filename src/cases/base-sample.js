@@ -69,6 +69,7 @@ class BaseSample {
     const screenshotFilename = `${this.source}_${this.sample}_${backend}_${dataType}_${model}`;
     let browser = null;
     let page = null;
+    let stopWatching = null;
     let result = {};
     const pageErrors = [];
     try {
@@ -80,6 +81,7 @@ class BaseSample {
       // A crashed renderer never settles some pending waits (e.g. those without timeout), so fail the case at once.
       const rendererCrashed = new Promise((_, reject) => {
         page.on("error", (error) => reject(new Error(`Renderer crashed: ${error.message}`)));
+        stopWatching = util.watchResponsive(page, reject);
       });
 
       await Promise.race([
@@ -117,6 +119,7 @@ class BaseSample {
       console.warn(errorMessage);
       result = { error: errorMessage };
     } finally {
+      if (stopWatching) stopWatching();
       if (page) await util.saveScreenshot(page, screenshotFilename);
       if (browser) {
         try {
