@@ -30,8 +30,22 @@ function getConfigLabel(configPath) {
   return base.replace(/^config\.?/, "");
 }
 
+// Identifies one execution: its start minute plus the config label, e.g. "202611271533-litert".
+// The result file is named after it and the screenshots of its cases are saved in the folder of the same name.
+let runId = "";
+
+function startRun(configLabel = "") {
+  runId = getTimestamp(true) + (configLabel ? `-${configLabel}` : "");
+}
+
+function getRunId() {
+  return runId || getTimestamp(true);
+}
+
 module.exports = {
   getTimestamp,
+  startRun,
+  getRunId,
   delay,
   getConfigLabel
 };

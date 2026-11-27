@@ -1,15 +1,14 @@
 const { ensureDir, outDir } = require("./fs");
-const { getTimestamp } = require("./common");
+const { getRunId } = require("./common");
 
 async function saveScreenshot(page, filename) {
-  const timestamp = getTimestamp();
-  const timestampMinute = getTimestamp(true);
-  const screenshotDir = `${outDir}/${timestamp}/screenshots`;
+  const runId = getRunId();
+  const screenshotDir = `${outDir}/${runId.slice(0, 8)}/${runId}`;
   ensureDir(screenshotDir);
   // save page as image
   await page
     .screenshot({
-      path: `${screenshotDir}/${filename}_${timestampMinute}.png`,
+      path: `${screenshotDir}/${filename}.png`,
       type: "png"
     })
     .then(() => {

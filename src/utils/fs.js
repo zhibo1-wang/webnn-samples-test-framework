@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const prettier = require("prettier");
-const { getTimestamp } = require("./common");
+const { getRunId } = require("./common");
 
 function ensureDir(relativePath) {
   const absolutePath = path.resolve(relativePath);
@@ -13,13 +13,11 @@ function ensureDir(relativePath) {
 const outDir = path.join(path.resolve(__dirname), "../../out").replace(/\\/g, "/");
 ensureDir(outDir);
 
-async function saveJsonFile(data, configLabel = "") {
+async function saveJsonFile(data) {
   const jsonData = JSON.stringify(data);
   const formattedJsonData = await prettier.format(jsonData, { parser: "json" });
-  const timestamp = getTimestamp();
-  const suffix = configLabel ? `-${configLabel}` : "";
-  const fileName = getTimestamp(true) + suffix;
-  const directoryPath = `${outDir}/${timestamp}`;
+  const fileName = getRunId();
+  const directoryPath = `${outDir}/${fileName.slice(0, 8)}`;
   ensureDir(directoryPath);
   const filePath = `${directoryPath}/${fileName}.json`;
   try {

@@ -82,6 +82,7 @@ program
 program.action(async ({ config: configPath, filters, browserDir, userDataDir, browserArgs, allowGpuErrors }) => {
   const config = require(path.resolve(process.cwd(), configPath));
   console.log(`Using config file: ${configPath}`);
+  util.startRun(util.getConfigLabel(configPath));
 
   if (filters === true) {
     console.log("Available filters:");
@@ -145,7 +146,7 @@ program.action(async ({ config: configPath, filters, browserDir, userDataDir, br
   }
 
   const configLabel = util.getConfigLabel(configPath);
-  const jsonPath = await util.saveJsonFile(results, configLabel);
+  const jsonPath = await util.saveJsonFile(results);
   // Copy the test results JSON file into `trends/data` in both `debug` and `production` modes.
   // In `debug` mode, the `jsonPath` includes `minute` information, which is unnecessary
   // for `trends` since it only compares and displays daily results.
